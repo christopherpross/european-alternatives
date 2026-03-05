@@ -191,7 +191,7 @@ readarray -t RAW_SUGGESTIONS <<'EOF'
 114|Overleaf
 113|HedgeDoc
 110|Koofr
-109|Open Telekom Cloud
+109|T Cloud Public
 108|STACKIT
 109|netzbremse.de
 105|GIMP
