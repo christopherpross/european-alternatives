@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
@@ -50,6 +51,47 @@ export default function BrowsePage() {
   const [openSourceOnly, setOpenSourceOnly] = useState(false);
   const [sortBy, setSortBy] = useState<SortBy>('trustScore');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [expandedCardIds, setExpandedCardIds] = useState<Set<string>>(new Set());
+
+  const handleExpand = useCallback((id: string) => {
+    setExpandedCardIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleCollapse = useCallback((id: string) => {
+    setExpandedCardIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const handleCollapseAll = useCallback(() => {
+    setExpandedCardIds(new Set());
+  }, []);
+
+  // Lock body scroll when overlay is open
+  useEffect(() => {
+    if (expandedCardIds.size > 0) {
+      document.body.classList.add('overlay-open');
+    } else {
+      document.body.classList.remove('overlay-open');
+    }
+    return () => document.body.classList.remove('overlay-open');
+  }, [expandedCardIds.size]);
+
+  // Close overlay on Escape
+  useEffect(() => {
+    if (expandedCardIds.size === 0) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleCollapseAll();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [expandedCardIds.size, handleCollapseAll]);
 
   const selectedFilters: SelectedFilters = useMemo(
     () => ({
@@ -172,6 +214,11 @@ export default function BrowsePage() {
     return result;
   }, [alternatives, usVendorNameBySlug, searchTerm, selectedFilters, sortBy, i18n.language]);
 
+  const expandedAlternatives = useMemo(
+    () => filteredAlternatives.filter((alt) => expandedCardIds.has(alt.id)),
+    [filteredAlternatives, expandedCardIds],
+  );
+
   if (loading) {
     return (
       <div className="browse-page">
@@ -237,7 +284,7 @@ export default function BrowsePage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: Math.min(0.1 + index * 0.05, 1) }}
               >
-                <AlternativeCard alternative={alternative} viewMode={viewMode} usVendorLookup={usVendorLookup} />
+                <AlternativeCard alternative={alternative} viewMode={viewMode} usVendorLookup={usVendorLookup} onExpand={handleExpand} />
               </motion.div>
             ))}
           </div>
@@ -260,7 +307,7 @@ export default function BrowsePage() {
               <div className="empty-catalogue">
                 <div className="empty-icon" aria-hidden="true">
                   <svg className="empty-search-icon" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                    <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
                   </svg>
                 </div>
                 <h2>{t('noResults')}</h2>
@@ -270,6 +317,38 @@ export default function BrowsePage() {
           </motion.div>
         )}
       </motion.div>
+
+      {expandedCardIds.size > 0 && createPortal(
+        <div
+          className="card-overlay-backdrop"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) handleCollapseAll();
+          }}
+        >
+          <div className="card-overlay-container">
+            {expandedAlternatives.map((alternative) => (
+              <div key={alternative.id} className="card-overlay-card">
+                <button
+                  className="card-overlay-close"
+                  onClick={() => handleCollapse(alternative.id)}
+                  aria-label="Close"
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                  </svg>
+                </button>
+                <AlternativeCard
+                  alternative={alternative}
+                  viewMode={viewMode}
+                  usVendorLookup={usVendorLookup}
+                  overlayMode
+                />
+              </div>
+            ))}
+          </div>
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }
