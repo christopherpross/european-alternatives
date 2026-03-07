@@ -15,6 +15,8 @@ interface AlternativeCardProps {
   usVendorLookup: Map<string, Alternative>;
   onExpand?: (id: string) => void;
   overlayMode?: boolean;
+  isComparing?: boolean;
+  onToggleCompare?: (id: string) => void;
 }
 
 function getTrustBadgeClass(score: number): string {
@@ -95,7 +97,7 @@ function getOpenSourceBadgeConfig(openSourceLevel: OpenSourceLevel): { className
   }
 }
 
-export default function AlternativeCard({ alternative, viewMode, usVendorLookup, onExpand, overlayMode }: AlternativeCardProps) {
+export default function AlternativeCard({ alternative, viewMode, usVendorLookup, onExpand, overlayMode, isComparing, onToggleCompare }: AlternativeCardProps) {
   const { categories } = useCatalog();
   const [usVendorDetailsExpanded, setUsVendorDetailsExpanded] = useState(false);
   const [trustBreakdownExpanded, setTrustBreakdownExpanded] = useState(false);
@@ -472,22 +474,41 @@ export default function AlternativeCard({ alternative, viewMode, usVendorLookup,
       </div>
 
       {!overlayMode && (
-        <button
-          className="alt-card-expand"
-          onClick={() => onExpand?.(alternative.id)}
-          aria-expanded={false}
-          aria-controls={`alt-details-${alternative.id}`}
-        >
-          <span>{t('browse:card.showMore')}</span>
-          <svg
-            className="alt-card-expand-icon"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            aria-hidden="true"
+        <div className="alt-card-expand-row">
+          <button
+            className="alt-card-expand"
+            onClick={() => onExpand?.(alternative.id)}
+            aria-expanded={false}
+            aria-controls={`alt-details-${alternative.id}`}
           >
-            <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z" />
-          </svg>
-        </button>
+            <span>{t('browse:card.showMore')}</span>
+            <svg
+              className="alt-card-expand-icon"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z" />
+            </svg>
+          </button>
+          <button
+            className={`alt-card-compare-toggle ${isComparing ? 'active' : ''}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleCompare?.(alternative.id);
+            }}
+            aria-pressed={isComparing}
+            title={isComparing ? 'Aus Vergleich entfernen' : 'Zum Vergleich hinzufügen'}
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              {isComparing ? (
+                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+              ) : (
+                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+              )}
+            </svg>
+          </button>
+        </div>
       )}
 
       {overlayMode && (

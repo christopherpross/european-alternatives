@@ -52,14 +52,17 @@ export default function BrowsePage() {
   const [sortBy, setSortBy] = useState<SortBy>('trustScore');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [expandedCardIds, setExpandedCardIds] = useState<Set<string>>(new Set());
+  const [compareCardIds, setCompareCardIds] = useState<Set<string>>(new Set());
 
   const handleExpand = useCallback((id: string) => {
     setExpandedCardIds((prev) => {
       const next = new Set(prev);
       next.add(id);
+      // Also add all compared cards
+      compareCardIds.forEach((cid) => next.add(cid));
       return next;
     });
-  }, []);
+  }, [compareCardIds]);
 
   const handleCollapse = useCallback((id: string) => {
     setExpandedCardIds((prev) => {
@@ -92,6 +95,26 @@ export default function BrowsePage() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [expandedCardIds.size, handleCollapseAll]);
+
+  const handleToggleCompare = useCallback((id: string) => {
+    setCompareCardIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleOpenCompare = useCallback(() => {
+    setExpandedCardIds(new Set(compareCardIds));
+  }, [compareCardIds]);
+
+  const handleClearCompare = useCallback(() => {
+    setCompareCardIds(new Set());
+  }, []);
 
   const selectedFilters: SelectedFilters = useMemo(
     () => ({
@@ -284,7 +307,14 @@ export default function BrowsePage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: Math.min(0.1 + index * 0.05, 1) }}
               >
-                <AlternativeCard alternative={alternative} viewMode={viewMode} usVendorLookup={usVendorLookup} onExpand={handleExpand} />
+                <AlternativeCard
+                  alternative={alternative}
+                  viewMode={viewMode}
+                  usVendorLookup={usVendorLookup}
+                  onExpand={handleExpand}
+                  isComparing={compareCardIds.has(alternative.id)}
+                  onToggleCompare={handleToggleCompare}
+                />
               </motion.div>
             ))}
           </div>
@@ -317,6 +347,23 @@ export default function BrowsePage() {
           </motion.div>
         )}
       </motion.div>
+
+      {compareCardIds.size > 0 && expandedCardIds.size === 0 && (
+        <div className="compare-floating-bar">
+          <span className="compare-floating-count">
+            {compareCardIds.size} {compareCardIds.size === 1 ? 'Karte' : 'Karten'} zum Vergleich ausgewählt
+          </span>
+          <button className="compare-floating-open" onClick={handleOpenCompare}>
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M10 3H4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1zM9 9H5V5h4v4zm11-6h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1zm-1 6h-4V5h4v4zm-9 4H4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-6a1 1 0 0 0-1-1zm-1 6H5v-4h4v4zm8-6c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8c-1.65 0-3-1.35-3-3s1.35-3 3-3 3 1.35 3 3-1.35 3-3 3zm1-4h-2v2h2v-2z" />
+            </svg>
+            Vergleichen
+          </button>
+          <button className="compare-floating-clear" onClick={handleClearCompare}>
+            ✕
+          </button>
+        </div>
+      )}
 
       {expandedCardIds.size > 0 && createPortal(
         <div
