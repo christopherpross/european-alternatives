@@ -137,168 +137,36 @@ PROMPT_TEMPLATE
   printf '%s\n' "$prompt"
 }
 
-# Snapshot date: 2026-02-23
-# Source: all currently open issues in TheMorpheus407/european-alternatives
+# Snapshot date: 2026-03-11
+# Source: unresolved alternative suggestions from currently open issues in
+# TheMorpheus407/european-alternatives (duplicates already in the catalog excluded)
 readarray -t RAW_SUGGESTIONS <<'EOF'
-182|overlayer
-181|Infomaniak
-180|Otto.de
-177|Zammad
-175|ioBroker
-170|AliasVault
-166|Sailfish OS
-162|Firefox
-162|Brave
-161|Tor Browser
-160|FreeOffice
-159|TeleGuard
-158|DNS4EU
-158|Quad9
-156|Super Productivity
-156|Vikunja
-154|Thaura
-151|Unraid
-150|SoftMaker Office
-147|Rclone
-146|BorgBackup
-145|Restic
-144|Duplicati
-141|GitLab
-140|GitLab by Stackhero
-139|Gitea
-138|Forgejo
-135|OpenCloud
-134|Kagi
-131|Qobuz
-130|Codeberg
-129|Signal
-129|Matrix
-129|Rocket.Chat
-129|Zulip
-129|Mattermost
-129|Discourse
-128|F-Droid
-128|Neo Store
-128|Aurora Store
-127|Aves Gallery
-126|e/OS
-125|QGIS
-124|Etar
-123|ipv64.net
-122|Liberapay
-119|LineageOS
-115|Mapy.com
-114|Overleaf
-113|HedgeDoc
-110|Koofr
-109|T Cloud Public
-108|STACKIT
-109|netzbremse.de
-105|GIMP
-105|DaVinci Resolve
-105|Shotcut
-105|Kdenlive
-102|Wave Terminal
-101|LocalSend
-100|Obsidian
-100|Trilium
-100|Org-roam
-100|Neorg
-99|KeePass
-99|KeePassXC
-97|heylogin
-96|Radicle
-95|CyberGhost VPN
-90|DeepL
-89|plankton.social
-86|Bitwarden
-86|HERE WeGo
-86|2FAS
-85|BigBlueButton
-85|bbbserver.com
-84|Surfshark VPN
-80|Loops
-79|LibreWolf
-79|Mullvad Browser
-78|Piwik PRO
-77|All-inkl
-76|HiDrive
-76|Hetzner Cloud
-76|STRATO Mail
-76|Vivaldi Mail
-76|FreeBSD
-76|Jellyfin
-73|Contabo
-72|LanguageTool
-69|Paperless-ngx
-67|DeltaMaster
-67|Datawrapper
-66|Keet
-66|Pubky
-65|CoMaps
-64|FairEmail
-64|K-9 Mail
-63|Aegis Authenticator
-62|alfaview
-60|GrapheneOS
-57|grommunio
-56|Proxmox VE
-53|TimeScribe
-52|Fluxer
-52|Stoat Chat
-52|Revolt
-49|Talos Linux
-46|NetBird
-45|Mojeek
-44|dashserv.io
-44|aitch.systems
-44|ph24.io
-44|datalix.de
-43|SearXNG
-42|Ladybird Browser
-41|Netcup
-40|TeamSpeak
-38|Nostr
-38|Zapstore
-38|Ghostfolio
-38|Nextcloud
-38|Immich
-38|Paperless
-38|Magic Earth
-38|Fountain
-38|Amethyst
-38|Primal
-37|Stalwart Mail Server
-37|mailcow
-35|Vaultwarden
-35|Bitwarden Unified
-34|Penpot
-33|Authentik
-33|Authelia
-33|Keycloak
-32|WeTransfer
-32|SwissTransfer
-31|Proton 2FA
-31|Ente Auth
-30|XMPP
-30|Gajim
-30|Conversations
-28|Cryptomator
-27|Fairphone
-27|SHIFT Phone
-27|Jolla Phone
-27|Volla Phone
-26|goneo
-24|Hetzner Storage Share
-24|Hetzner Storage Box
-23|Delta Chat
-22|Feeder
-22|Read You
-22|FreshRSS
-22|Glance
-21|OpenCal
-20|Nextcloud Talk
-11|Bielik.ai
+228|CalyxOS
+229|iodéOS
+230|AXP.OS
+231|SHIFT OS Light
+232|crDroid
+233|ginlo Private
+235|ViaMichelin
+238|LuLu
+239|Dokku
+241|FreshRSS
+244|Piper
+244|Solaar
+244|Input Remapper
+245|dns.sb
+246|AntennaPod
+248|Saber
+249|Mammouth AI
+250|tokeneurope.ai
+251|GNU Taler
+253|fckaf.de Mail
+257|Finanzfluss Copilot
+258|Forge 4D
+259|UpCloud
+260|Lettermint
+261|Ente Photos
+262|Fairlytics
 EOF
 
 declare -A seen
