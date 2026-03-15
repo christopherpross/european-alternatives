@@ -27,6 +27,8 @@
   "card": {
     "showMore": "Mehr anzeigen",
     "showLess": "Weniger anzeigen",
+    "showMoreFor": "Mehr über {{name}} anzeigen",
+    "showLessFor": "Weniger über {{name}} anzeigen",
     "about": "Über",
     "details": "Details",
     "founded": "Gegründet",
@@ -40,6 +42,8 @@
     "usVendorComparison": "US-Unternehmensprofil",
     "showUSVendorDetails": "Details anzeigen",
     "hideUSVendorDetails": "Details ausblenden",
+    "showUSVendorDetailsFor": "US-Unternehmensprofile für {{name}} anzeigen",
+    "hideUSVendorDetailsFor": "US-Unternehmensprofile für {{name}} ausblenden",
     "trustScorePending": "Trust-Score ausstehend",
     "trustScoreLabel": "Trust-Score: {{score}}/10",
     "trustScoreBreakdownTitle": "Trust-Score-Aufschluesselung",

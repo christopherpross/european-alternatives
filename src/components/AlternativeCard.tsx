@@ -390,6 +390,11 @@ export default function AlternativeCard({ alternative, viewMode, usVendorLookup 
             onClick={() => setUsVendorDetailsExpanded(!usVendorDetailsExpanded)}
             aria-expanded={usVendorDetailsExpanded}
             aria-controls={`alt-us-vendors-${alternative.id}`}
+            aria-label={
+              usVendorDetailsExpanded
+                ? t('browse:card.hideUSVendorDetailsFor', { name: alternative.name })
+                : t('browse:card.showUSVendorDetailsFor', { name: alternative.name })
+            }
           >
             <span>
               {usVendorDetailsExpanded
@@ -459,14 +464,19 @@ export default function AlternativeCard({ alternative, viewMode, usVendorLookup 
       </div>
 
       <div className="alt-card-badges">
-        <span className={`alt-card-badge alt-card-badge-pricing ${alternative.pricing}`}>
+        <span className="sr-only">
+          {[t(`common:pricing.${alternative.pricing}`), t(openSourceBadge.labelKey), ...visibleTags.slice(0, 2)].join(', ')}
+        </span>
+        <span className={`alt-card-badge alt-card-badge-pricing ${alternative.pricing}`} aria-hidden="true">
           {t(`common:pricing.${alternative.pricing}`)}
         </span>
-        <span className={`alt-card-badge alt-card-badge-openness ${openSourceBadge.className}`}>
+        <span className={`alt-card-badge alt-card-badge-openness ${openSourceBadge.className}`} aria-hidden="true">
           {t(openSourceBadge.labelKey)}
         </span>
         {visibleTags.slice(0, 2).map((tag) => (
-          <span key={tag} className="alt-card-badge alt-card-badge-tag">{tag}</span>
+          <span key={tag} className="alt-card-badge alt-card-badge-tag" aria-hidden="true">
+            {tag}
+          </span>
         ))}
       </div>
 
@@ -475,6 +485,11 @@ export default function AlternativeCard({ alternative, viewMode, usVendorLookup 
         onClick={() => setExpanded(!expanded)}
         aria-expanded={expanded}
         aria-controls={`alt-details-${alternative.id}`}
+        aria-label={
+          expanded
+            ? t('browse:card.showLessFor', { name: alternative.name })
+            : t('browse:card.showMoreFor', { name: alternative.name })
+        }
       >
         <span>{expanded ? t('browse:card.showLess') : t('browse:card.showMore')}</span>
         <svg
@@ -542,8 +557,11 @@ export default function AlternativeCard({ alternative, viewMode, usVendorLookup 
                 <div className="alt-detail-section">
                   <h4 className="alt-detail-title">{t('browse:card.tags')}</h4>
                   <div className="alt-detail-tags">
+                    <span className="sr-only">{visibleTags.join(', ')}</span>
                     {visibleTags.map((tag) => (
-                      <span key={tag} className="alt-detail-tag">{tag}</span>
+                      <span key={tag} className="alt-detail-tag" aria-hidden="true">
+                        {tag}
+                      </span>
                     ))}
                   </div>
                 </div>
