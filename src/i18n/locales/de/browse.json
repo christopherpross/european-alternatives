@@ -48,6 +48,7 @@
     "trustScorePending": "Trust-Score ausstehend",
     "trustScoreLabel": "Trust-Score: {{score}}/10",
     "trustScoreBreakdownTitle": "Trust-Score-Aufschluesselung",
+    "trustScoreBreakdownExplanation": "Jede Dimension startet bei 50% und wird durch Vorbehaltsabzuege (−) und positive Signale (+) angepasst. Der operative Score ist die Summe aller vier Dimensionen.",
     "trustScoreBreakdownEquation": "{{base}} + {{operational}} = {{final}}/10",
     "trustScoreBreakdownEquationCapped": "min({{base}} + {{operational}}, {{cap}}) = {{final}}/10",
     "trustScoreBreakdownBase": "Basis-Score ({{baseClass}})",
@@ -68,6 +69,12 @@
       "governance": "Governance",
       "reliability": "Zuverlaessigkeit",
       "contract": "Vertrag"
+    },
+    "dimensionDesc": {
+      "security": "Audits, Verschluesselung, Schwachstellen",
+      "governance": "Eigentum, Transparenz, Compliance",
+      "reliability": "Verfuegbarkeit, Vorfaelle, Wartung",
+      "contract": "Portabilitaet, Lock-in, faire Bedingungen"
     },
     "baseClass": {
       "foss": "Vollstaendig Open Source",

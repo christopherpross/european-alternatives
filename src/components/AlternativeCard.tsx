@@ -167,6 +167,8 @@ export default function AlternativeCard({ alternative, viewMode, usVendorLookup,
         tier,
         effective: dimension.effective,
         max: dimension.max,
+        penalties: dimension.penalties,
+        signals: dimension.signals,
       };
     });
 
@@ -184,6 +186,8 @@ export default function AlternativeCard({ alternative, viewMode, usVendorLookup,
         ...dimension,
         effective10: toTenScale(dimension.effective),
         max10: toTenScale(dimension.max),
+        penalties10: toTenScale(dimension.penalties),
+        signals10: toTenScale(dimension.signals),
       })),
       reservationItems: reservationItems.map((item) => ({
         ...item,
@@ -321,6 +325,9 @@ export default function AlternativeCard({ alternative, viewMode, usVendorLookup,
               <h4 className="alt-card-trust-breakdown-title">
                 {t('browse:card.trustScoreBreakdownTitle')}
               </h4>
+              <p className="alt-card-trust-breakdown-explanation">
+                {t('browse:card.trustScoreBreakdownExplanation')}
+              </p>
               <p className="alt-card-trust-breakdown-equation">
                 {t(
                   trustBreakdown.classCap10 != null
@@ -343,6 +350,18 @@ export default function AlternativeCard({ alternative, viewMode, usVendorLookup,
                   </span>
                   <strong>+{formatScore(trustBreakdown.baseScore10)}</strong>
                 </div>
+                {trustBreakdown.penaltyTotal10 > 0 && (
+                  <div className="alt-card-trust-breakdown-row">
+                    <span>{t('browse:card.trustScoreBreakdownReservations')}</span>
+                    <strong className="alt-card-trust-breakdown-delta-neg">−{formatScore(trustBreakdown.penaltyTotal10)}</strong>
+                  </div>
+                )}
+                {trustBreakdown.signalTotal10 > 0 && (
+                  <div className="alt-card-trust-breakdown-row">
+                    <span>{t('browse:card.trustScoreBreakdownSignals')}</span>
+                    <strong className="alt-card-trust-breakdown-delta-pos">+{formatScore(trustBreakdown.signalTotal10)}</strong>
+                  </div>
+                )}
                 <div className="alt-card-trust-breakdown-row">
                   <span>{t('browse:card.trustScoreBreakdownOperational')}</span>
                   <strong>+{formatScore(trustBreakdown.operationalTotal10)}</strong>
@@ -373,7 +392,24 @@ export default function AlternativeCard({ alternative, viewMode, usVendorLookup,
                 {trustBreakdown.dimensions.map((dimension) => (
                   <div key={dimension.tier} className="alt-card-trust-breakdown-dimension">
                     <span>{t(`browse:card.penaltyTier.${dimension.tier}`)}</span>
+                    <span className="alt-card-trust-breakdown-dimension-desc">
+                      {t(`browse:card.dimensionDesc.${dimension.tier}`)}
+                    </span>
                     <strong>{formatScore(dimension.effective10)}/{formatScore(dimension.max10)}</strong>
+                    {(dimension.penalties10 > 0 || dimension.signals10 > 0) && (
+                      <div className="alt-card-trust-breakdown-dimension-deltas">
+                        {dimension.penalties10 > 0 && (
+                          <span className="alt-card-trust-breakdown-dimension-delta alt-card-trust-breakdown-dimension-delta-neg">
+                            −{formatScore(dimension.penalties10)}
+                          </span>
+                        )}
+                        {dimension.signals10 > 0 && (
+                          <span className="alt-card-trust-breakdown-dimension-delta alt-card-trust-breakdown-dimension-delta-pos">
+                            +{formatScore(dimension.signals10)}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

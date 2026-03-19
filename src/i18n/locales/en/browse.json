@@ -48,6 +48,7 @@
     "trustScorePending": "Trust-Score Pending",
     "trustScoreLabel": "Trust Score: {{score}}/10",
     "trustScoreBreakdownTitle": "Trust Score Breakdown",
+    "trustScoreBreakdownExplanation": "Each dimension starts at 50% and is adjusted by reservation penalties (−) and positive signals (+). The operational score is the sum of all four dimensions.",
     "trustScoreBreakdownEquation": "{{base}} + {{operational}} = {{final}}/10",
     "trustScoreBreakdownEquationCapped": "min({{base}} + {{operational}}, {{cap}}) = {{final}}/10",
     "trustScoreBreakdownBase": "Base score ({{baseClass}})",
@@ -68,6 +69,12 @@
       "governance": "Governance",
       "reliability": "Reliability",
       "contract": "Contract"
+    },
+    "dimensionDesc": {
+      "security": "Audits, encryption, vulnerabilities",
+      "governance": "Ownership, transparency, compliance",
+      "reliability": "Uptime, incidents, maintenance",
+      "contract": "Portability, lock-in, fair terms"
     },
     "baseClass": {
       "foss": "Fully open-source",
