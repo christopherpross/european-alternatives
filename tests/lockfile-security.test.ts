@@ -18,6 +18,7 @@ interface ResolvedPackageVersion {
 
 const MIN_SAFE_ROLLUP_VERSION: SemverTuple = [4, 59, 0]
 const MIN_SAFE_FLATTED_VERSION: SemverTuple = [3, 4, 2]
+const MIN_SAFE_AJV_VERSION: SemverTuple = [6, 14, 0]
 const MIN_SAFE_MINIMATCH_V3_VERSION: SemverTuple = [3, 1, 4]
 const MIN_SAFE_MINIMATCH_V9_VERSION: SemverTuple = [9, 0, 7]
 const lockfileUrl = new URL('../package-lock.json', import.meta.url)
@@ -124,6 +125,10 @@ describe('package-lock dependency security', () => {
 
   it('pins flatted outside the GHSA-rf6f-7fwh-wjgh and GHSA-25h7-pfq9-p65f vulnerable ranges', () => {
     expectResolvedPackagesAtLeastVersion('flatted', MIN_SAFE_FLATTED_VERSION)
+  })
+
+  it('pins ajv outside the GHSA-2g4f-4pwh-qvx6 vulnerable range', () => {
+    expectResolvedPackagesAtLeastVersion('ajv', MIN_SAFE_AJV_VERSION)
   })
 
   it('pins minimatch 3.x outside the GHSA-3ppc-4f35-3m26, GHSA-7r86-cg39-jmmj, and GHSA-23c5-xmqv-rm74 vulnerable ranges', () => {
