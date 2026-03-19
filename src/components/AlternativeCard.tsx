@@ -514,6 +514,11 @@ export default function AlternativeCard({ alternative, viewMode, usVendorLookup,
                 ? t('browse:card.removeFromCompare', { name: alternative.name })
                 : t('browse:card.addToCompare', { name: alternative.name })
             }
+            title={
+              isComparing
+                ? t('browse:card.removeFromCompare', { name: alternative.name })
+                : t('browse:card.addToCompare', { name: alternative.name })
+            }
           >
             <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
               {isComparing ? (

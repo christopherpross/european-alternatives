@@ -28,7 +28,6 @@
     "showMore": "Show more",
     "showLess": "Show less",
     "showMoreFor": "Show more about {{name}}",
-    "showLessFor": "Show less about {{name}}",
     "addToCompare": "Add {{name}} to comparison",
     "removeFromCompare": "Remove {{name}} from comparison",
     "about": "About",
