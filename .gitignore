@@ -6,6 +6,7 @@ logs
 /tmp/export/*
 !/tmp/export/.gitkeep
 *.log
+.eslintcache
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
