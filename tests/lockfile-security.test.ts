@@ -18,6 +18,8 @@ interface ResolvedPackageVersion {
 
 const MIN_SAFE_ROLLUP_VERSION: SemverTuple = [4, 59, 0]
 const MIN_SAFE_FLATTED_VERSION: SemverTuple = [3, 4, 2]
+const MIN_SAFE_MINIMATCH_V3_VERSION: SemverTuple = [3, 1, 4]
+const MIN_SAFE_MINIMATCH_V9_VERSION: SemverTuple = [9, 0, 7]
 const lockfileUrl = new URL('../package-lock.json', import.meta.url)
 
 function readLockfile(): Lockfile {
@@ -82,9 +84,23 @@ function getResolvedPackageVersions(
 function expectResolvedPackagesAtLeastVersion(
   packageName: string,
   minimum: SemverTuple,
+  major?: number,
 ): void {
   const resolvedPackages = getResolvedPackageVersions(readLockfile(), packageName)
-  const vulnerablePackages = resolvedPackages.filter(
+  const scopedPackages =
+    major === undefined
+      ? resolvedPackages
+      : resolvedPackages.filter(
+          ({ version }) => parseSemver(version)[0] === major,
+        )
+
+  if (scopedPackages.length === 0) {
+    throw new Error(
+      `No resolved ${packageName} entries found in package-lock.json for major version ${major}.`,
+    )
+  }
+
+  const vulnerablePackages = scopedPackages.filter(
     ({ version }) => !isAtLeastVersion(version, minimum),
   )
 
@@ -98,7 +114,7 @@ function expectResolvedPackagesAtLeastVersion(
     )
   }
 
-  expect(resolvedPackages.length).toBeGreaterThan(0)
+  expect(scopedPackages.length).toBeGreaterThan(0)
 }
 
 describe('package-lock dependency security', () => {
@@ -108,5 +124,21 @@ describe('package-lock dependency security', () => {
 
   it('pins flatted outside the GHSA-rf6f-7fwh-wjgh and GHSA-25h7-pfq9-p65f vulnerable ranges', () => {
     expectResolvedPackagesAtLeastVersion('flatted', MIN_SAFE_FLATTED_VERSION)
+  })
+
+  it('pins minimatch 3.x outside the GHSA-3ppc-4f35-3m26, GHSA-7r86-cg39-jmmj, and GHSA-23c5-xmqv-rm74 vulnerable ranges', () => {
+    expectResolvedPackagesAtLeastVersion(
+      'minimatch',
+      MIN_SAFE_MINIMATCH_V3_VERSION,
+      3,
+    )
+  })
+
+  it('pins minimatch 9.x outside the GHSA-3ppc-4f35-3m26, GHSA-7r86-cg39-jmmj, and GHSA-23c5-xmqv-rm74 vulnerable ranges', () => {
+    expectResolvedPackagesAtLeastVersion(
+      'minimatch',
+      MIN_SAFE_MINIMATCH_V9_VERSION,
+      9,
+    )
   })
 })
