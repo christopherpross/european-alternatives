@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import LanguageSwitcher from './LanguageSwitcher';
+import ThemeToggle from './ThemeToggle';
 
 const MotionLink = motion.create(Link);
 
@@ -45,6 +46,7 @@ export default function Layout({ children }: LayoutProps) {
           <Link to={`/${lang}/browse`} className="nav-link">{t('nav.browse')}</Link>
           <Link to={`/${lang}/further-reading`} className="nav-link">{t('nav.furtherReading')}</Link>
           <LanguageSwitcher />
+          <ThemeToggle />
         </nav>
       </header>
 
