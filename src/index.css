@@ -2158,6 +2158,10 @@ button:disabled {
   border-radius: var(--radius-sm);
 }
 
+.alt-card-us-vendor-item .alt-card-trust-breakdown {
+  margin-top: var(--spacing-xs);
+}
+
 .alt-card-us-vendor-summary {
   display: flex;
   align-items: center;
