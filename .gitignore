@@ -46,4 +46,9 @@ api/config/admin-token.php
 
 # Research pipeline (contains operational prompts, not for public)
 scripts/research-alternative.sh
+scripts/research-alternative-minimax.sh
 /scripts/research-batch-issues.sh
+
+# MiniMax API key (plain text secret)
+scripts/.minimax-api-key
+/auto-develop.sh
