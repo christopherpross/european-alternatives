@@ -1,6 +1,12 @@
 # Serve the Vite-built SPA from dist/
 RewriteEngine On
 
+# Keep the canonical origin preload-eligible so browsers can enforce HTTPS
+# before the first request once the domain is submitted to the HSTS preload list.
+<IfModule mod_headers.c>
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+</IfModule>
+
 # Enforce a single canonical origin early to avoid mixed host/protocol redirects.
 RewriteCond %{HTTPS} !=on [OR]
 RewriteCond %{HTTP_HOST} !^european-alternatives\.cloud$ [NC]

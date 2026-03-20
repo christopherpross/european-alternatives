@@ -22,6 +22,18 @@ function getCommandIndex(workflow: string, command: string): number {
   return index
 }
 
+function getJobBlock(workflow: string, jobName: string): string {
+  const jobBlockPattern = new RegExp(
+    `\\n  ${jobName}:\\n([\\s\\S]*?)(?=\\n  [a-z0-9-]+:\\n|$)`,
+    'u',
+  )
+  const match = workflow.match(jobBlockPattern)
+
+  expect(match).not.toBeNull()
+
+  return match![0]
+}
+
 describe('validation workflow', () => {
   it('runs on pull requests and pushes to main', () => {
     const workflow = readWorkflow(validationWorkflowUrl)
@@ -89,5 +101,21 @@ describe('deploy workflow', () => {
     expect(typecheck).toBeLessThan(lint)
     expect(lint).toBeLessThan(build)
     expect(build).toBeLessThan(publish)
+  })
+
+  it('deploys GitHub Pages only after the build job', () => {
+    const workflow = readWorkflow(deployWorkflowUrl)
+    const deployJob = getJobBlock(workflow, 'deploy')
+
+    expect(deployJob).toContain('needs: build')
+    expect(deployJob).toContain('uses: actions/deploy-pages@v4')
+  })
+
+  it('keeps deployment verification repo-scoped instead of polling live production', () => {
+    const workflow = readWorkflow(deployWorkflowUrl)
+
+    expect(workflow).not.toContain('verify-production-hsts:')
+    expect(workflow).not.toContain('scripts/verify-hsts.mjs')
+    expect(workflow).not.toContain('HSTS_BASE_URL:')
   })
 })
