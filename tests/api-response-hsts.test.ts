@@ -9,6 +9,8 @@ import { afterAll, describe, expect, it } from 'vitest'
 const bootstrapPath = resolve('api/bootstrap.php')
 const cachePath = resolve('api/cache.php')
 const expectedHstsValue = 'max-age=31536000; includeSubDomains; preload'
+const expectedCspValue =
+  "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
 const tempPaths: string[] = []
 
 let phpPromise: Promise<PHP> | undefined
@@ -101,6 +103,9 @@ sendJsonResponse(201, ['ok' => true]);
     expect(getHeader(response.headers, 'Strict-Transport-Security')).toBe(
       expectedHstsValue,
     )
+    expect(getHeader(response.headers, 'Content-Security-Policy')).toBe(
+      expectedCspValue,
+    )
     expect(getHeader(response.headers, 'X-Content-Type-Options')).toBe(
       'nosniff',
     )
@@ -123,6 +128,9 @@ jsonError(403, 'forbidden');
     expect(getHeader(response.headers, 'Strict-Transport-Security')).toBe(
       expectedHstsValue,
     )
+    expect(getHeader(response.headers, 'Content-Security-Policy')).toBe(
+      expectedCspValue,
+    )
   })
 
   it('adds HSTS to cache-miss responses', async () => {
@@ -141,6 +149,9 @@ sendCacheableJsonResponse('entries', ['locale' => 'en'], ['data' => []]);
     expect(JSON.parse(response.stdoutText)).toEqual({ data: [] })
     expect(getHeader(response.headers, 'Strict-Transport-Security')).toBe(
       expectedHstsValue,
+    )
+    expect(getHeader(response.headers, 'Content-Security-Policy')).toBe(
+      expectedCspValue,
     )
     expect(getHeader(response.headers, 'X-Cache')).toBe('MISS')
   })
@@ -171,6 +182,9 @@ serveCachedResponse('entries', ['locale' => 'en']);
     })
     expect(getHeader(response.headers, 'Strict-Transport-Security')).toBe(
       expectedHstsValue,
+    )
+    expect(getHeader(response.headers, 'Content-Security-Policy')).toBe(
+      expectedCspValue,
     )
     expect(getHeader(response.headers, 'X-Cache')).toBe('HIT')
   })

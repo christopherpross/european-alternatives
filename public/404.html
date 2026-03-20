@@ -1,14 +1,14 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
   <head>
-    <meta charset="utf-8">
+    <meta charset="utf-8" />
     <title>European Alternatives</title>
-    <script>
-      // GitHub Pages SPA redirect - stores path in sessionStorage
-      // then redirects to root. index.html picks up the stored path.
-      sessionStorage.setItem('redirect', location.pathname + location.search + location.hash);
-      location.replace('/');
-    </script>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'" />
+    <meta http-equiv="refresh" content="0; url=/" />
+    <meta name="robots" content="noindex" />
+    <script src="/404-redirect.js"></script>
   </head>
-  <body></body>
+  <body>
+    <p><a href="/">Continue to European Alternatives</a></p>
+  </body>
 </html>
