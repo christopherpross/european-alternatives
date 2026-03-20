@@ -24,6 +24,7 @@ type AuthResponse = {
   status: number
   headers: Record<string, string[]>
   json: unknown
+  stderr: string
 }
 
 function createTempPath(prefix: string): string {
@@ -79,6 +80,7 @@ async function runAuthRequest(options: {
   now: number
   rateLimitDir: string
   remoteAddr?: string
+  userAgent?: string
 }): Promise<AuthResponse> {
   const php = await getPhp()
   const response = await php.runStream({
@@ -94,15 +96,20 @@ async function runAuthRequest(options: {
       ...(options.authorization === undefined
         ? {}
         : { HTTP_AUTHORIZATION: options.authorization }),
+      ...(options.userAgent === undefined
+        ? {}
+        : { HTTP_USER_AGENT: options.userAgent }),
     },
   })
 
   const stdoutText = await response.stdoutText
+  const stderrText = await response.stderrText
 
   return {
     status: await response.httpStatusCode,
     headers: await response.headers,
     json: JSON.parse(stdoutText) as unknown,
+    stderr: stderrText,
   }
 }
 
@@ -289,5 +296,115 @@ describe('admin auth rate limiting', () => {
 
     expect(response.status).toBe(403)
     expect(statSync(rateLimitDir).mode & 0o777).toBe(0o700)
+  })
+})
+
+describe('admin auth audit logging', () => {
+  it('logs failed auth with IP, reason, and user-agent', async () => {
+    const rateLimitDir = createTempPath('euroalt-admin-rate-limit-')
+    const remoteAddr = '198.51.100.40'
+
+    const response = await runAuthRequest({
+      authorization: 'Bearer wrong-token',
+      now: 10_000,
+      rateLimitDir,
+      remoteAddr,
+      userAgent: 'TestBot/1.0',
+    })
+
+    expect(response.status).toBe(403)
+    expect(response.stderr).toContain('euroalt-admin: auth FAILED from 198.51.100.40 reason=forbidden (UA: TestBot/1.0)')
+  })
+
+  it('logs successful auth with IP', async () => {
+    const rateLimitDir = createTempPath('euroalt-admin-rate-limit-')
+    const remoteAddr = '198.51.100.41'
+
+    const response = await runAuthRequest({
+      authorization: `Bearer ${validToken}`,
+      now: 10_100,
+      rateLimitDir,
+      remoteAddr,
+    })
+
+    expect(response.status).toBe(200)
+    expect(response.stderr).toContain('euroalt-admin: auth OK from 198.51.100.41')
+  })
+
+  it('logs missing authorization header with correct reason', async () => {
+    const rateLimitDir = createTempPath('euroalt-admin-rate-limit-')
+    const remoteAddr = '198.51.100.42'
+
+    const response = await runAuthRequest({
+      now: 10_200,
+      rateLimitDir,
+      remoteAddr,
+    })
+
+    expect(response.status).toBe(401)
+    expect(response.stderr).toContain('euroalt-admin: auth FAILED from 198.51.100.42 reason=missing_authorization')
+  })
+
+  it('logs invalid authorization scheme with correct reason', async () => {
+    const rateLimitDir = createTempPath('euroalt-admin-rate-limit-')
+    const remoteAddr = '198.51.100.43'
+
+    const response = await runAuthRequest({
+      authorization: 'Basic dXNlcjpwYXNz',
+      now: 10_300,
+      rateLimitDir,
+      remoteAddr,
+    })
+
+    expect(response.status).toBe(401)
+    expect(response.stderr).toContain('euroalt-admin: auth FAILED from 198.51.100.43 reason=invalid_authorization_scheme')
+  })
+
+  it('truncates user-agent to 100 characters', async () => {
+    const rateLimitDir = createTempPath('euroalt-admin-rate-limit-')
+    const remoteAddr = '198.51.100.44'
+    const longUA = 'A'.repeat(200)
+
+    const response = await runAuthRequest({
+      authorization: 'Bearer wrong-token',
+      now: 10_400,
+      rateLimitDir,
+      remoteAddr,
+      userAgent: longUA,
+    })
+
+    expect(response.status).toBe(403)
+    expect(response.stderr).toContain(`(UA: ${'A'.repeat(100)})`)
+    expect(response.stderr).not.toContain(`(UA: ${'A'.repeat(101)})`)
+  })
+
+  it('logs "unknown" when REMOTE_ADDR is missing', async () => {
+    const rateLimitDir = createTempPath('euroalt-admin-rate-limit-')
+
+    const response = await runAuthRequest({
+      authorization: 'Bearer wrong-token',
+      now: 10_500,
+      rateLimitDir,
+      remoteAddr: '',
+    })
+
+    expect(response.stderr).toContain('euroalt-admin: auth FAILED from unknown')
+  })
+
+  it('does not leak the bearer token in log messages', async () => {
+    const rateLimitDir = createTempPath('euroalt-admin-rate-limit-')
+    const remoteAddr = '198.51.100.46'
+    const secretToken = 'super-secret-token-that-should-not-appear-in-logs'
+
+    const response = await runAuthRequest({
+      authorization: `Bearer ${secretToken}`,
+      now: 10_600,
+      rateLimitDir,
+      remoteAddr,
+    })
+
+    expect(response.status).toBe(403)
+    expect(response.stderr).not.toContain(secretToken)
+    expect(response.stderr).toContain('euroalt-admin: auth FAILED')
   })
 })

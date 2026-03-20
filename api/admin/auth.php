@@ -356,6 +356,10 @@ function registerAdminAuthFailure(string $clientKey, int $statusCode, string $me
 
 function denyAdminAuth(string $clientKey, int $statusCode, string $message): never
 {
+    $ip = !empty($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : 'unknown';
+    $ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 100);
+    error_log(sprintf('euroalt-admin: auth FAILED from %s reason=%s (UA: %s)', $ip, $message, $ua));
+
     try {
         $result = registerAdminAuthFailure($clientKey, $statusCode, $message);
     } catch (Throwable $throwable) {
@@ -401,6 +405,8 @@ function requireAdminAuth(): void
     }
 
     if (hash_equals($expectedToken, $providedToken)) {
+        $ip = !empty($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : 'unknown';
+        error_log(sprintf('euroalt-admin: auth OK from %s', $ip));
         // A successful CLI submission should not keep the maintainer locked out behind old failures.
         safeClearAdminAuthRateLimitState($clientKey);
         return;
