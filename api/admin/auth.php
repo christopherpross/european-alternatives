@@ -85,6 +85,29 @@ function getAdminAuditUserAgent(): string
     return substr(trim($sanitizedUserAgent), 0, 100);
 }
 
+function sanitizeAdminLogMessage(string $message): string
+{
+    $sanitizedMessage = preg_replace_callback(
+        '/[\x00-\x1F\x7F]/',
+        static function (array $matches): string {
+            return match ($matches[0]) {
+                "\r" => '\\r',
+                "\n" => '\\n',
+                "\t" => '\\t',
+                default => sprintf('\\x%02X', ord($matches[0])),
+            };
+        },
+        $message
+    );
+
+    return is_string($sanitizedMessage) ? $sanitizedMessage : '[admin-log-sanitization-failed]';
+}
+
+function logAdminMessage(string $message): void
+{
+    error_log(sanitizeAdminLogMessage($message));
+}
+
 /**
  * @param array<string, int|string> $fields
  */
@@ -131,7 +154,7 @@ function logAdminMutationAuditSuccess(
     $fields['ip'] = getAdminRequestIp();
     $fields['ua'] = getAdminAuditUserAgent();
 
-    error_log('euroalt-admin: audit ' . formatAdminAuditFields($fields));
+    logAdminMessage('euroalt-admin: audit ' . formatAdminAuditFields($fields));
 }
 
 function getAdminAuthClientKey(): string
@@ -353,7 +376,7 @@ function safeClearAdminAuthRateLimitState(string $clientKey): void
     try {
         clearAdminAuthRateLimitState($clientKey);
     } catch (Throwable $throwable) {
-        error_log('euroalt-admin: unable to clear auth rate limit state: ' . $throwable->getMessage());
+        logAdminMessage('euroalt-admin: unable to clear auth rate limit state: ' . $throwable->getMessage());
     }
 }
 
@@ -384,7 +407,7 @@ function registerAdminAuthFailure(string $clientKey, int $statusCode, string $me
             if ($recentHourlyFailures >= ADMIN_AUTH_LONG_WINDOW_MAX_FAILURES) {
                 if ($state['blocked_until'] <= $now) {
                     $state['blocked_until'] = $now + ADMIN_AUTH_BLOCK_SECONDS;
-                    error_log(sprintf(
+                    logAdminMessage(sprintf(
                         'euroalt-admin: auth rate limit block for %s until %s',
                         $clientKey,
                         gmdate(DATE_ATOM, $state['blocked_until'])
@@ -428,12 +451,12 @@ function denyAdminAuth(string $clientKey, int $statusCode, string $message): nev
 {
     $ip = getAdminRequestIp();
     $ua = getAdminAuditUserAgent();
-    error_log(sprintf('euroalt-admin: auth FAILED from %s reason=%s (UA: %s)', $ip, $message, $ua));
+    logAdminMessage(sprintf('euroalt-admin: auth FAILED from %s reason=%s (UA: %s)', $ip, $message, $ua));
 
     try {
         $result = registerAdminAuthFailure($clientKey, $statusCode, $message);
     } catch (Throwable $throwable) {
-        error_log('euroalt-admin: auth rate limiter unavailable: ' . $throwable->getMessage());
+        logAdminMessage('euroalt-admin: auth rate limiter unavailable: ' . $throwable->getMessage());
         jsonError(503, 'auth_rate_limit_unavailable');
     }
 
@@ -470,13 +493,13 @@ function requireAdminAuth(): void
     try {
         $expectedToken = loadAdminToken();
     } catch (RuntimeException) {
-        error_log('euroalt-admin: token not configured on server');
+        logAdminMessage('euroalt-admin: token not configured on server');
         jsonError(500, 'auth_not_configured');
     }
 
     if (hash_equals($expectedToken, $providedToken)) {
         $ip = getAdminRequestIp();
-        error_log(sprintf('euroalt-admin: auth OK from %s', $ip));
+        logAdminMessage(sprintf('euroalt-admin: auth OK from %s', $ip));
         // A successful CLI submission should not keep the maintainer locked out behind old failures.
         safeClearAdminAuthRateLimitState($clientKey);
         return;

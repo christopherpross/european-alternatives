@@ -81,7 +81,7 @@ if (isset($body['website_url']) && is_string($body['website_url']) && trim($body
 try {
     $pdo = getDatabaseConnection();
 } catch (Throwable $e) {
-    error_log('euroalt-admin: DB connection failed: ' . $e->getMessage());
+    logAdminMessage('euroalt-admin: DB connection failed: ' . $e->getMessage());
     jsonError(500, 'database_unavailable');
 }
 
@@ -94,7 +94,7 @@ try {
         $stmt->execute(['code' => $countryCode]);
         if ($stmt->fetch() === false) {
             // Unknown country code — set to null rather than failing the denial
-            error_log("euroalt-admin: deny-alternative ignoring unknown country_code '$countryCode'");
+            logAdminMessage("euroalt-admin: deny-alternative ignoring unknown country_code '$countryCode'");
             $countryCode = null;
         }
     }
@@ -250,15 +250,15 @@ try {
     }
     // MySQL error 1062 = duplicate key — return 409 instead of generic 500
     if ($e->errorInfo[1] === 1062) {
-        error_log('euroalt-admin: duplicate key: ' . $e->getMessage());
+        logAdminMessage('euroalt-admin: duplicate key: ' . $e->getMessage());
         jsonError(409, 'duplicate_entry');
     }
-    error_log('euroalt-admin: deny-alternative failed: ' . $e->getMessage());
+    logAdminMessage('euroalt-admin: deny-alternative failed: ' . $e->getMessage());
     jsonError(500, 'internal_error');
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
-    error_log('euroalt-admin: deny-alternative failed: ' . $e->getMessage());
+    logAdminMessage('euroalt-admin: deny-alternative failed: ' . $e->getMessage());
     jsonError(500, 'internal_error');
 }

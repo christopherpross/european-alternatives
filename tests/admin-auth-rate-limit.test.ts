@@ -107,12 +107,28 @@ final class TestAddAlternativePdo
             return;
         }
 
+        if (str_contains($sql, 'SELECT id FROM catalog_entries WHERE name = :name AND status = :status LIMIT 1')) {
+            return;
+        }
+
+        if (str_contains($sql, 'SELECT entry_id FROM us_vendor_aliases WHERE alias = :alias LIMIT 1')) {
+            return;
+        }
+
         if (str_contains($sql, 'INSERT INTO catalog_entries')) {
-            $this->lastInsertedId = 1001;
+            $this->lastInsertedId = ($params['status'] ?? '') === 'us' ? 3001 : 1001;
             return;
         }
 
         if (str_contains($sql, 'INSERT INTO entry_categories')) {
+            return;
+        }
+
+        if (str_contains($sql, 'INSERT IGNORE INTO us_vendor_aliases')) {
+            return;
+        }
+
+        if (str_contains($sql, 'INSERT INTO entry_replacements')) {
             return;
         }
 
@@ -126,6 +142,14 @@ final class TestAddAlternativePdo
         }
 
         if (str_contains($sql, 'SELECT id FROM catalog_entries WHERE slug = :slug')) {
+            return false;
+        }
+
+        if (str_contains($sql, 'SELECT id FROM catalog_entries WHERE name = :name AND status = :status LIMIT 1')) {
+            return false;
+        }
+
+        if (str_contains($sql, 'SELECT entry_id FROM us_vendor_aliases WHERE alias = :alias LIMIT 1')) {
             return false;
         }
 
@@ -229,6 +253,10 @@ final class TestDenyAlternativePdo
 
     public function handleExecute(string $sql, array $params): void
     {
+        if (str_contains($sql, 'SELECT code FROM countries')) {
+            return;
+        }
+
         if (str_contains($sql, 'SELECT id, status FROM catalog_entries WHERE slug = :slug')) {
             return;
         }
@@ -247,6 +275,10 @@ final class TestDenyAlternativePdo
 
     public function handleFetch(string $sql, array $params): array|false
     {
+        if (str_contains($sql, 'SELECT code FROM countries')) {
+            return ($params['code'] ?? '') === 'de' ? ['code' => 'de'] : false;
+        }
+
         if (str_contains($sql, 'SELECT id, status FROM catalog_entries WHERE slug = :slug')) {
             return false;
         }
@@ -698,6 +730,29 @@ describe('admin auth audit logging', () => {
   })
 })
 
+describe('admin log sanitization', () => {
+  it('escapes control characters before writing admin log messages', async () => {
+    const rateLimitDir = createTempPath('euroalt-admin-rate-limit-')
+
+    const response = await runPhpAuthRequest(
+      `<?php
+declare(strict_types=1);
+require ${JSON.stringify(adminAuthPath)};
+logAdminMessage("euroalt-admin: helper first line\\nsecond line\\t" . chr(1));
+sendJsonResponse(200, ['ok' => true]);
+`,
+      {
+        now: 10_650,
+        rateLimitDir,
+      },
+    )
+
+    expect(response.status).toBe(200)
+    expect(response.stderr).toContain('euroalt-admin: helper first line\\nsecond line\\t\\x01')
+    expect(response.stderr).not.toContain('helper first line\nsecond line')
+  })
+})
+
 describe('admin mutation audit logging', () => {
   it('formats structured mutation audit logs with sanitized request context', async () => {
     const rateLimitDir = createTempPath('euroalt-admin-rate-limit-')
@@ -758,6 +813,34 @@ sendJsonResponse(200, ['ok' => true]);
     )
   })
 
+  it('escapes newlines in auto-created US vendor log messages', async () => {
+    const rateLimitDir = createTempPath('euroalt-admin-rate-limit-')
+    const response = await runPhpAuthRequest(addAlternativeSuccessRunnerCode, {
+      authorization: `Bearer ${validToken}`,
+      body: JSON.stringify({
+        slug: 'forged-vendor-test',
+        name: 'Forged Vendor Test',
+        description_en: 'European email alternative.',
+        country_code: 'de',
+        website_url: 'https://eurostack.example',
+        categories: [{ category_id: 'email', is_primary: true }],
+        tags: [],
+        replaces_us: ['Legit Vendor\nFORGED vendor log line'],
+      }),
+      now: 11_250,
+      rateLimitDir,
+      remoteAddr: '198.51.100.62',
+    })
+
+    expect(response.status).toBe(201)
+    expect(response.stderr).toContain(
+      "euroalt-admin: auto-created US vendor 'Legit Vendor\\nFORGED vendor log line' (id=3001, slug=legit-vendor-forged-vendor-log-line)",
+    )
+    expect(response.stderr).not.toContain(
+      "euroalt-admin: auto-created US vendor 'Legit Vendor\nFORGED vendor log line'",
+    )
+  })
+
   it('logs successful deny-alternative mutations with reason length but not the raw denial text', async () => {
     const rateLimitDir = createTempPath('euroalt-admin-rate-limit-')
     const denyReason = 'Fails gateway criteria because it is just a wrapper around a US service.'
@@ -785,6 +868,30 @@ sendJsonResponse(200, ['ok' => true]);
       `euroalt-admin: audit action=deny-alternative slug=wrapper-service entry_id=2001 status=denied reason_length=${denyReason.length} ip=198.51.100.61 ua="Research Bot/3.0"`,
     )
     expect(response.stderr).not.toContain(denyReason)
+  })
+
+  it('escapes newlines when logging ignored deny-alternative country codes', async () => {
+    const rateLimitDir = createTempPath('euroalt-admin-rate-limit-')
+    const response = await runPhpAuthRequest(denyAlternativeSuccessRunnerCode, {
+      authorization: `Bearer ${validToken}`,
+      body: JSON.stringify({
+        slug: 'forged-country-test',
+        name: 'Forged Country Test',
+        deny_reason: 'Fails gateway criteria.',
+        country_code: 'de\nFORGED deny log line',
+      }),
+      now: 11_350,
+      rateLimitDir,
+      remoteAddr: '198.51.100.63',
+    })
+
+    expect(response.status).toBe(201)
+    expect(response.stderr).toContain(
+      "euroalt-admin: deny-alternative ignoring unknown country_code 'de\\nforged deny log line'",
+    )
+    expect(response.stderr).not.toContain(
+      "euroalt-admin: deny-alternative ignoring unknown country_code 'de\nforged deny log line'",
+    )
   })
 })
 
