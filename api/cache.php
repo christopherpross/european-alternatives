@@ -48,8 +48,8 @@ function serveCachedResponse(string $key, array $params = []): bool
     sendContentSecurityPolicyHeader();
     sendReferrerPolicyHeader();
     sendPermissionsPolicyHeader();
+    sendXContentTypeOptionsHeader();
     sendXFrameOptionsHeader();
-    header('X-Content-Type-Options: nosniff');
     header('X-Cache: HIT');
 
     echo $content;
@@ -92,8 +92,8 @@ function sendCacheableJsonResponse(string $key, array $params, array $payload): 
     sendContentSecurityPolicyHeader();
     sendReferrerPolicyHeader();
     sendPermissionsPolicyHeader();
+    sendXContentTypeOptionsHeader();
     sendXFrameOptionsHeader();
-    header('X-Content-Type-Options: nosniff');
     header('X-Cache: MISS');
 
     echo $json;

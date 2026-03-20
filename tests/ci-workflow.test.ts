@@ -125,7 +125,7 @@ describe('deploy workflow', () => {
 
   it('verifies live Hostinger HSTS after deploy with the shared smoke test', () => {
     const workflow = readWorkflow(deployWorkflowUrl)
-    const verifyJob = getJobBlock(workflow, 'verify-production-hsts')
+    const verifyJob = getJobBlock(workflow, 'verify-production-security-headers')
 
     expect(verifyJob).toContain("if: github.ref == 'refs/heads/main'")
     expect(verifyJob).toContain('needs: deploy')
@@ -142,22 +142,34 @@ describe('deploy workflow', () => {
     )
   })
 
-  it('keeps enough timeout budget for both post-deploy live verification steps', () => {
+  it('keeps enough timeout budget for all post-deploy live verification steps', () => {
     const workflow = readWorkflow(deployWorkflowUrl)
-    const verifyJob = getJobBlock(workflow, 'verify-production-hsts')
+    const verifyJob = getJobBlock(workflow, 'verify-production-security-headers')
 
-    expect(getJobTimeoutMinutes(verifyJob)).toBeGreaterThanOrEqual(30)
+    expect(getJobTimeoutMinutes(verifyJob)).toBeGreaterThanOrEqual(45)
   })
 
   it('verifies live Hostinger CSP-compatible HTML after deploy with the shared smoke test', () => {
     const workflow = readWorkflow(deployWorkflowUrl)
-    const verifyJob = getJobBlock(workflow, 'verify-production-hsts')
+    const verifyJob = getJobBlock(workflow, 'verify-production-security-headers')
 
     expect(verifyJob).toContain(
       'Verify live CSP-compatible HTML on Hostinger',
     )
     expect(verifyJob).toContain(
       'run: npm test -- --run tests/csp-live-deployment.test.ts',
+    )
+  })
+
+  it('verifies live Hostinger X-Content-Type-Options after deploy with the shared smoke test', () => {
+    const workflow = readWorkflow(deployWorkflowUrl)
+    const verifyJob = getJobBlock(workflow, 'verify-production-security-headers')
+
+    expect(verifyJob).toContain(
+      'Verify live X-Content-Type-Options on Hostinger',
+    )
+    expect(verifyJob).toContain(
+      'run: npm test -- --run tests/x-content-type-options-live-deployment.test.ts',
     )
   })
 })

@@ -15,6 +15,7 @@ const STRICT_TRANSPORT_SECURITY_HEADER_VALUE = 'max-age=31536000; includeSubDoma
 const CONTENT_SECURITY_POLICY_HEADER_VALUE = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests";
 const REFERRER_POLICY_HEADER_VALUE = 'strict-origin-when-cross-origin';
 const PERMISSIONS_POLICY_HEADER_VALUE = 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()';
+const X_CONTENT_TYPE_OPTIONS_HEADER_VALUE = 'nosniff';
 const X_FRAME_OPTIONS_HEADER_VALUE = 'DENY';
 
 /**
@@ -51,6 +52,14 @@ function sendPermissionsPolicyHeader(): void
 }
 
 /**
+ * Disable MIME sniffing for browsers that still attempt content-type guessing.
+ */
+function sendXContentTypeOptionsHeader(): void
+{
+    header('X-Content-Type-Options: ' . X_CONTENT_TYPE_OPTIONS_HEADER_VALUE);
+}
+
+/**
  * Legacy clickjacking defense for browsers that do not support CSP frame-ancestors.
  */
 function sendXFrameOptionsHeader(): void
@@ -71,8 +80,8 @@ function sendJsonResponse(int $statusCode, array $payload): never
     sendContentSecurityPolicyHeader();
     sendReferrerPolicyHeader();
     sendPermissionsPolicyHeader();
+    sendXContentTypeOptionsHeader();
     sendXFrameOptionsHeader();
-    header('X-Content-Type-Options: nosniff');
 
     echo json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
     exit;
