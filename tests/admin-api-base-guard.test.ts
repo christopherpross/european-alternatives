@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
@@ -80,7 +81,12 @@ describe('admin API base guard', () => {
 })
 
 describe('research script entrypoints', () => {
-  it('shows --help for both research scripts without failing on a missing guard file', () => {
+  // These scripts are gitignored (local-only tooling) and do not exist in CI.
+  const scriptsExist = [researchScriptPath, researchMinimaxScriptPath].every(
+    (p) => { try { readFileSync(p); return true } catch { return false } },
+  )
+
+  it.skipIf(!scriptsExist)('shows --help for both research scripts without failing on a missing guard file', () => {
     for (const scriptPath of [researchScriptPath, researchMinimaxScriptPath]) {
       const result = runScript(scriptPath, ['--help'])
 
@@ -90,7 +96,7 @@ describe('research script entrypoints', () => {
     }
   })
 
-  it('fails fast on insecure remote EUROALT_API_BASE values before any admin or model work', () => {
+  it.skipIf(!scriptsExist)('fails fast on insecure remote EUROALT_API_BASE values before any admin or model work', () => {
     for (const scriptPath of [researchScriptPath, researchMinimaxScriptPath]) {
       const result = runScript(scriptPath, ['Krita', '--dry-run'], {
         EUROALT_API_BASE: 'http://example.com',
