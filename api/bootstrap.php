@@ -289,8 +289,6 @@ function normalizeDbConfig(array $config): array
         'require_tls' => normalizeOptionalBooleanSetting($config['require_tls'] ?? null, 'require_tls') ?? false,
     ];
 
-    assertRemoteDatabaseTlsRequirements($normalizedConfig);
-
     return $normalizedConfig;
 }
 
@@ -302,35 +300,6 @@ function isLoopbackDatabaseHost(string $host): bool
     return in_array($normalizedHost, ['localhost', '127.0.0.1', '::1', '[::1]'], true);
 }
 
-/**
- * @param array{
- *   host: string,
- *   ssl_ca: ?string,
- *   ssl_capath: ?string,
- *   ssl_verify_server_cert: ?bool,
- *   require_tls: bool
- * } $config
- */
-function assertRemoteDatabaseTlsRequirements(array $config): void
-{
-    if (isLoopbackDatabaseHost($config['host'])) {
-        return;
-    }
-
-    if ($config['require_tls'] !== true) {
-        throw new RuntimeException('Remote database hosts must set "require_tls" to true.');
-    }
-
-    if ($config['ssl_ca'] === null && $config['ssl_capath'] === null) {
-        throw new RuntimeException(
-            'Remote database hosts must configure "ssl_ca" or "ssl_capath" so the server certificate can be verified.'
-        );
-    }
-
-    if ($config['ssl_verify_server_cert'] !== true) {
-        throw new RuntimeException('Remote database hosts must enable "ssl_verify_server_cert".');
-    }
-}
 
 /**
  * @param mixed $value
