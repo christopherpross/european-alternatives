@@ -15,55 +15,16 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="European Alternatives - Discover European & Open Source Software" />
     <meta name="twitter:description" content="Find European and open-source alternatives to US tech giants. Support digital sovereignty and data privacy." />
-    <script>
-      (function() {
-        try {
-          var stored = localStorage.getItem('theme-preference');
-          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-          var theme = (stored === 'light' || stored === 'dark') ? stored : (prefersDark ? 'dark' : 'light');
-          document.documentElement.setAttribute('data-theme', theme);
-        } catch(e) {
-          document.documentElement.setAttribute('data-theme', 'dark');
-        }
-      })();
-    </script>
+    <script src="/app-shell.js"></script>
+    <link rel="stylesheet" href="/app-shell.css" />
     <script type="module" crossorigin src="/assets/index-r7iXbFTT.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-DCqkkD2M.css">
   </head>
   <body>
-    <script>
-      (function() {
-        var redirect = sessionStorage.getItem('redirect');
-        if (redirect) {
-          sessionStorage.removeItem('redirect');
-          window.history.replaceState(null, '', redirect);
-        }
-      })();
-    </script>
     <div id="root">
-      <div id="loading-spinner" style="
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        min-height: 100vh;
-        margin: 0;
-      ">
-        <div style="
-          width: 2.5rem;
-          height: 2.5rem;
-          border: 3px solid rgba(128, 128, 128, 0.15);
-          border-top-color: #6c35de;
-          border-radius: 50%;
-          animation: spin 0.8s linear infinite;
-        "></div>
+      <div id="loading-spinner" class="app-loading">
+        <div class="app-loading__spinner"></div>
       </div>
-      <style>
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-        [data-theme="dark"] #loading-spinner { background-color: #0d0d11; }
-        [data-theme="light"] #loading-spinner { background-color: #f5f6fa; }
-      </style>
     </div>
   </body>
 </html>
