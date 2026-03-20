@@ -53,3 +53,15 @@ scripts/research-alternative-minimax.sh
 # MiniMax API key (plain text secret)
 scripts/.minimax-api-key
 /auto-develop.sh
+
+# Environment variable files (Vite loads .env* from project root automatically)
+.env
+.env.*
+
+# Private key and certificate material
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*.jks
