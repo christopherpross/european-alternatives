@@ -6,12 +6,15 @@ import { loadNodeRuntime, useHostFilesystem } from '@php-wasm/node'
 import { PHP } from '@php-wasm/universal'
 import { afterAll, describe, expect, it } from 'vitest'
 
+import { permissionsPolicyValue } from './support/permissions-policy'
+
 const bootstrapPath = resolve('api/bootstrap.php')
 const cachePath = resolve('api/cache.php')
 const expectedHstsValue = 'max-age=31536000; includeSubDomains; preload'
 const expectedCspValue =
   "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
 const expectedReferrerPolicyValue = 'strict-origin-when-cross-origin'
+const expectedPermissionsPolicyValue = permissionsPolicyValue
 const expectedXfoValue = 'DENY'
 const tempPaths: string[] = []
 
@@ -111,6 +114,9 @@ sendJsonResponse(201, ['ok' => true]);
     expect(getHeader(response.headers, 'Referrer-Policy')).toBe(
       expectedReferrerPolicyValue,
     )
+    expect(getHeader(response.headers, 'Permissions-Policy')).toBe(
+      expectedPermissionsPolicyValue,
+    )
     expect(getHeader(response.headers, 'X-Content-Type-Options')).toBe(
       'nosniff',
     )
@@ -142,6 +148,9 @@ jsonError(403, 'forbidden');
     expect(getHeader(response.headers, 'Referrer-Policy')).toBe(
       expectedReferrerPolicyValue,
     )
+    expect(getHeader(response.headers, 'Permissions-Policy')).toBe(
+      expectedPermissionsPolicyValue,
+    )
     expect(getHeader(response.headers, 'X-Frame-Options')).toBe(
       expectedXfoValue,
     )
@@ -169,6 +178,9 @@ sendCacheableJsonResponse('entries', ['locale' => 'en'], ['data' => []]);
     )
     expect(getHeader(response.headers, 'Referrer-Policy')).toBe(
       expectedReferrerPolicyValue,
+    )
+    expect(getHeader(response.headers, 'Permissions-Policy')).toBe(
+      expectedPermissionsPolicyValue,
     )
     expect(getHeader(response.headers, 'X-Cache')).toBe('MISS')
     expect(getHeader(response.headers, 'X-Frame-Options')).toBe(
@@ -208,6 +220,9 @@ serveCachedResponse('entries', ['locale' => 'en']);
     )
     expect(getHeader(response.headers, 'Referrer-Policy')).toBe(
       expectedReferrerPolicyValue,
+    )
+    expect(getHeader(response.headers, 'Permissions-Policy')).toBe(
+      expectedPermissionsPolicyValue,
     )
     expect(getHeader(response.headers, 'X-Cache')).toBe('HIT')
     expect(getHeader(response.headers, 'X-Frame-Options')).toBe(

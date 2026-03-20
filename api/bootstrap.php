@@ -14,6 +14,7 @@ const DEFAULT_ENV_LOADER_PATH = '/home/u688914453/.secrets/euroalt-db-env.php';
 const STRICT_TRANSPORT_SECURITY_HEADER_VALUE = 'max-age=31536000; includeSubDomains; preload';
 const CONTENT_SECURITY_POLICY_HEADER_VALUE = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests";
 const REFERRER_POLICY_HEADER_VALUE = 'strict-origin-when-cross-origin';
+const PERMISSIONS_POLICY_HEADER_VALUE = 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()';
 const X_FRAME_OPTIONS_HEADER_VALUE = 'DENY';
 
 /**
@@ -42,6 +43,14 @@ function sendReferrerPolicyHeader(): void
 }
 
 /**
+ * Deny powerful browser features the current application does not use.
+ */
+function sendPermissionsPolicyHeader(): void
+{
+    header('Permissions-Policy: ' . PERMISSIONS_POLICY_HEADER_VALUE);
+}
+
+/**
  * Legacy clickjacking defense for browsers that do not support CSP frame-ancestors.
  */
 function sendXFrameOptionsHeader(): void
@@ -61,6 +70,7 @@ function sendJsonResponse(int $statusCode, array $payload): never
     sendStrictTransportSecurityHeader();
     sendContentSecurityPolicyHeader();
     sendReferrerPolicyHeader();
+    sendPermissionsPolicyHeader();
     sendXFrameOptionsHeader();
     header('X-Content-Type-Options: nosniff');
 
