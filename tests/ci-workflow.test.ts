@@ -111,11 +111,22 @@ describe('deploy workflow', () => {
     expect(deployJob).toContain('uses: actions/deploy-pages@v4')
   })
 
-  it('keeps deployment verification repo-scoped instead of polling live production', () => {
+  it('verifies live Hostinger HSTS after deploy with the shared smoke test', () => {
     const workflow = readWorkflow(deployWorkflowUrl)
+    const verifyJob = getJobBlock(workflow, 'verify-production-hsts')
 
-    expect(workflow).not.toContain('verify-production-hsts:')
-    expect(workflow).not.toContain('scripts/verify-hsts.mjs')
-    expect(workflow).not.toContain('HSTS_BASE_URL:')
+    expect(verifyJob).toContain("if: github.ref == 'refs/heads/main'")
+    expect(verifyJob).toContain('needs: deploy')
+    expect(verifyJob).toContain('uses: actions/checkout@v4')
+    expect(verifyJob).toContain('uses: actions/setup-node@v4')
+    expect(verifyJob).toContain('run: npm ci')
+    expect(verifyJob).toContain(
+      'EUROALT_LIVE_BASE_URL: https://european-alternatives.cloud',
+    )
+    expect(verifyJob).toContain("EUROALT_LIVE_VERIFY_TIMEOUT_MS: '600000'")
+    expect(verifyJob).toContain("EUROALT_LIVE_VERIFY_INTERVAL_MS: '15000'")
+    expect(verifyJob).toContain(
+      'run: npm test -- --run tests/hsts-live-deployment.test.ts',
+    )
   })
 })

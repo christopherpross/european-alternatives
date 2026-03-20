@@ -3,9 +3,10 @@ RewriteEngine On
 
 # Keep the canonical origin preload-eligible so browsers can enforce HTTPS
 # before the first request once the domain is submitted to the HSTS preload list.
-# PHP also emits the same policy for API responses, so set it only when absent.
+# Apply the policy at the edge for every response class, including API direct
+# files and Apache-generated misses that never reach PHP.
 <IfModule mod_headers.c>
-    Header always setifempty Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
 </IfModule>
 
 # Enforce a single canonical origin early to avoid mixed host/protocol redirects.
