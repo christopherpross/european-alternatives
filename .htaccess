@@ -1,6 +1,9 @@
 # Serve the Vite-built SPA from dist/
 RewriteEngine On
 
+# Ensure Authorization reaches PHP for any protected API endpoint.
+SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+
 # Keep the canonical origin preload-eligible so browsers can enforce HTTPS
 # before the first request once the domain is submitted to the HSTS preload list.
 # Apply the policy at the edge for every response class, including API direct

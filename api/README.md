@@ -24,7 +24,7 @@ Developer reference for the PHP read API and MySQL database.
 
 ## API Endpoints
 
-All endpoints are read-only, return JSON, and are cached for 5 minutes (`Cache-Control: public, max-age=300`).
+Catalog endpoints are read-only, return JSON, and are cached for 5 minutes (`Cache-Control: public, max-age=300`). Operational health endpoints are uncached and may require authentication.
 
 | Method | URL | Query Params | Description |
 |---|---|---|---|
@@ -35,7 +35,7 @@ All endpoints are read-only, return JSON, and are cached for 5 minutes (`Cache-C
 | GET | `/api/catalog/tags` | -- | List all tags with slugs and optional labels. |
 | GET | `/api/catalog/further-reading` | -- | List curated further-reading resources. |
 | GET | `/api/catalog/landing-groups` | `locale` (en\|de) | Landing page category groups with nested category IDs. |
-| GET | `/api/health/db` | -- | Database health check (no caching, includes transport probe metadata when available). |
+| GET | `/api/health/db` | -- | Operational database readiness check (no caching, requires admin Bearer token, includes transport probe metadata when available). |
 
 Response envelope for list endpoints:
 
