@@ -81,4 +81,13 @@ describe('HSTS route coverage', () => {
     expect(classifyRoute('/api/catalog/entries.php')).toBe('api-direct-php-file')
     expect(classifyRoute('/api/catalog/does-not-exist')).toBe('api-passthrough')
   })
+
+  it('routes unmatched API paths to a PHP handler that emits security headers', () => {
+    const notFoundHandler = resolve(repoRoot, 'api/not-found.php')
+
+    expect(isFile(notFoundHandler)).toBe(true)
+    expect(
+      activeLines.some((line) => line.includes('api/not-found.php')),
+    ).toBe(true)
+  })
 })

@@ -29,9 +29,10 @@ RewriteCond %{REQUEST_URI} ^/api/ [NC]
 RewriteCond %{REQUEST_FILENAME}.php -f
 RewriteRule ^(.+)$ $1.php [L]
 
-# Pass through remaining API requests (directories, 404s).
+# Route unmatched API paths to a PHP 404 handler so the response includes
+# security headers.  LiteSpeed's built-in error pages omit .htaccess headers.
 RewriteCond %{REQUEST_URI} ^/api/ [NC]
-RewriteRule ^ - [L]
+RewriteRule ^ api/not-found.php [L]
 
 # Skip requests already targeting dist/
 RewriteCond %{REQUEST_URI} ^/dist/ [NC]

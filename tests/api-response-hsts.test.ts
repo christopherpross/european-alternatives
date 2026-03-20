@@ -10,6 +10,7 @@ import { permissionsPolicyValue } from './support/permissions-policy'
 
 const bootstrapPath = resolve('api/bootstrap.php')
 const cachePath = resolve('api/cache.php')
+const notFoundPath = resolve('api/not-found.php')
 const expectedHstsValue = 'max-age=31536000; includeSubDomains; preload'
 const expectedCspValue =
   "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
@@ -183,6 +184,36 @@ sendCacheableJsonResponse('entries', ['locale' => 'en'], ['data' => []]);
       expectedPermissionsPolicyValue,
     )
     expect(getHeader(response.headers, 'X-Cache')).toBe('MISS')
+    expect(getHeader(response.headers, 'X-Frame-Options')).toBe(
+      expectedXfoValue,
+    )
+  })
+
+  it('adds repo-owned security headers to API 404 not-found responses', async () => {
+    const response = await runPhpResponse({
+      code: `<?php
+require ${JSON.stringify(notFoundPath)};
+`,
+    })
+
+    expect(response.status).toBe(404)
+    expect(JSON.parse(response.stdoutText)).toEqual({
+      ok: false,
+      error: 'not_found',
+      detail: 'The requested API endpoint does not exist.',
+    })
+    expect(getHeader(response.headers, 'Strict-Transport-Security')).toBe(
+      expectedHstsValue,
+    )
+    expect(getHeader(response.headers, 'Content-Security-Policy')).toBe(
+      expectedCspValue,
+    )
+    expect(getHeader(response.headers, 'Referrer-Policy')).toBe(
+      expectedReferrerPolicyValue,
+    )
+    expect(getHeader(response.headers, 'Permissions-Policy')).toBe(
+      expectedPermissionsPolicyValue,
+    )
     expect(getHeader(response.headers, 'X-Frame-Options')).toBe(
       expectedXfoValue,
     )
