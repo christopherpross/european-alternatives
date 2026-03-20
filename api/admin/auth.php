@@ -29,12 +29,12 @@ function loadAdminToken(): string
 
     $envPath = getenv(APP_ADMIN_TOKEN_PATH_ENV);
     $tokenPath = is_string($envPath) && $envPath !== '' ? $envPath : DEFAULT_ADMIN_TOKEN_PATH;
-    // Defense-in-depth: restrict token file to the Hostinger user's home directory to prevent
+    // Defense-in-depth: restrict token file to the secrets directory to prevent
     // require_once of arbitrary paths if the env var is ever controllable (e.g., misconfigured CGI/FastCGI).
     $realTokenPath = realpath($tokenPath);
     if ($realTokenPath === false) {
         // File does not exist — fall through to the RuntimeException below
-    } elseif (!str_starts_with($realTokenPath, '/home/u688914453/.secrets/')) {
+    } elseif (!str_starts_with($realTokenPath, APP_SECRETS_DIRECTORY)) {
         throw new RuntimeException('Admin token path is outside the allowed directory.');
     } elseif (is_readable($realTokenPath)) {
         require_once $realTokenPath;

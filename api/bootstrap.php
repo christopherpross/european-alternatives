@@ -1,6 +1,12 @@
 <?php
 declare(strict_types=1);
 
+// Allowed base directory for secret files loaded via require/require_once.
+// Overridable via define() before including this file — used by tests only.
+// Cannot be influenced by environment variables or HTTP headers.
+if (!defined('APP_SECRETS_DIRECTORY')) {
+    define('APP_SECRETS_DIRECTORY', '/home/u688914453/.secrets/');
+}
 const APP_DB_CONFIG_ENV = 'EUROALT_DB_CONFIG';
 const DEFAULT_DB_CONFIG_PATH = '/home/u688914453/.secrets/euroalt-db.php';
 const APP_ENV_LOADER_PATH_ENV = 'EUROALT_ENV_LOADER';
@@ -140,11 +146,24 @@ function loadDbConfig(): array
 
     $configPath = getenv(APP_DB_CONFIG_ENV) ?: DEFAULT_DB_CONFIG_PATH;
 
-    if (!is_string($configPath) || $configPath === '' || !is_readable($configPath)) {
+    if (!is_string($configPath) || $configPath === '') {
         throw new RuntimeException('Database config file is missing or unreadable.');
     }
 
-    $config = require $configPath;
+    // Defense-in-depth: restrict config file to the secrets directory to prevent
+    // require of arbitrary paths if the env var is ever controllable (e.g., misconfigured CGI/FastCGI).
+    $realConfigPath = realpath($configPath);
+    if ($realConfigPath === false) {
+        throw new RuntimeException('Database config file is missing or unreadable.');
+    }
+    if (!str_starts_with($realConfigPath, APP_SECRETS_DIRECTORY)) {
+        throw new RuntimeException('Database config path is outside the allowed directory.');
+    }
+    if (!is_readable($realConfigPath)) {
+        throw new RuntimeException('Database config file is missing or unreadable.');
+    }
+
+    $config = require $realConfigPath;
     if (!is_array($config)) {
         throw new RuntimeException('Database config must return an array.');
     }
@@ -164,8 +183,21 @@ function loadEnvironmentOverrides(): void
     $loaded = true;
 
     $envLoaderPath = getenv(APP_ENV_LOADER_PATH_ENV) ?: DEFAULT_ENV_LOADER_PATH;
-    if (is_string($envLoaderPath) && $envLoaderPath !== '' && is_readable($envLoaderPath)) {
-        require_once $envLoaderPath;
+    if (!is_string($envLoaderPath) || $envLoaderPath === '') {
+        return;
+    }
+
+    // Defense-in-depth: restrict env loader file to the secrets directory to prevent
+    // require_once of arbitrary paths if the env var is ever controllable (e.g., misconfigured CGI/FastCGI).
+    $realEnvLoaderPath = realpath($envLoaderPath);
+    if ($realEnvLoaderPath === false) {
+        return;
+    }
+    if (!str_starts_with($realEnvLoaderPath, APP_SECRETS_DIRECTORY)) {
+        throw new RuntimeException('Env loader path is outside the allowed directory.');
+    }
+    if (is_readable($realEnvLoaderPath)) {
+        require_once $realEnvLoaderPath;
     }
 }
 

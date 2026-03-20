@@ -180,6 +180,7 @@ return [
     const result = await runPhpJson(
       `<?php
       declare(strict_types=1);
+      define('APP_SECRETS_DIRECTORY', ${JSON.stringify(workspaceTmpRoot + '/')});
       require ${JSON.stringify(bootstrapPath)};
 
       try {
