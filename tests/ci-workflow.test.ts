@@ -1,6 +1,7 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
+const workflowsDirectoryUrl = new URL('../.github/workflows/', import.meta.url)
 const validationWorkflowUrl = new URL(
   '../.github/workflows/validate.yml',
   import.meta.url,
@@ -12,6 +13,30 @@ const deployWorkflowUrl = new URL(
 
 function readWorkflow(url: URL): string {
   return readFileSync(url, 'utf8')
+}
+
+function readWorkflowFiles(): Array<{ name: string; workflow: string }> {
+  return readdirSync(workflowsDirectoryUrl, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.yml'))
+    .map((entry) => ({
+      name: entry.name,
+      workflow: readWorkflow(new URL(entry.name, workflowsDirectoryUrl)),
+    }))
+}
+
+function getActionUses(
+  workflow: string,
+): Array<{ action: string; ref: string; versionComment?: string }> {
+  return Array.from(
+    workflow.matchAll(
+      /^\s*uses:\s+([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)@([^\s#]+)(?:\s+#\s+([^\n]+))?$/gmu,
+    ),
+    ([, action, ref, versionComment]) => ({
+      action,
+      ref,
+      versionComment,
+    }),
+  )
 }
 
 function getCommandIndex(workflow: string, command: string): number {
@@ -40,6 +65,14 @@ function getJobTimeoutMinutes(jobBlock: string): number {
   expect(timeoutMatch).not.toBeNull()
 
   return Number.parseInt(timeoutMatch![1], 10)
+}
+
+function getWorkflowHeader(workflow: string): string {
+  const [header] = workflow.split('\njobs:\n', 1)
+
+  expect(header).toBeDefined()
+
+  return header
 }
 
 describe('validation workflow', () => {
@@ -75,6 +108,30 @@ describe('validation workflow', () => {
     expect(test).toBeLessThan(typecheck)
     expect(typecheck).toBeLessThan(lint)
     expect(lint).toBeLessThan(build)
+  })
+})
+
+describe('workflow action pinning', () => {
+  it('pins every GitHub Action to a full commit SHA with a release comment', () => {
+    const workflowFiles = readWorkflowFiles()
+
+    expect(workflowFiles.length).toBeGreaterThan(0)
+
+    for (const { name, workflow } of workflowFiles) {
+      const actionUses = getActionUses(workflow)
+
+      expect(actionUses.length, `${name} should reference at least one action`).toBeGreaterThan(0)
+
+      for (const usage of actionUses) {
+        expect(usage.ref, `${name} should pin ${usage.action}`).toMatch(
+          /^[0-9a-f]{40}$/u,
+        )
+        expect(
+          usage.versionComment,
+          `${name} should keep a human-readable release comment for ${usage.action}`,
+        ).toMatch(/^v\d+\.\d+\.\d+$/u)
+      }
+    }
   })
 })
 
@@ -120,7 +177,26 @@ describe('deploy workflow', () => {
     const deployJob = getJobBlock(workflow, 'deploy')
 
     expect(deployJob).toContain('needs: build')
-    expect(deployJob).toContain('uses: actions/deploy-pages@v4')
+    expect(deployJob).toContain('uses: actions/deploy-pages@')
+  })
+
+  it('scopes deploy permissions to the minimum required per job', () => {
+    const workflow = readWorkflow(deployWorkflowUrl)
+    const workflowHeader = getWorkflowHeader(workflow)
+    const buildJob = getJobBlock(workflow, 'build')
+    const deployJob = getJobBlock(workflow, 'deploy')
+    const verifyJob = getJobBlock(workflow, 'verify-production-security-headers')
+
+    expect(workflowHeader).not.toContain('permissions:')
+    expect(buildJob).toContain('permissions:')
+    expect(buildJob).toContain('contents: write')
+    expect(deployJob).toContain('permissions:')
+    expect(deployJob).toContain('pages: write')
+    expect(deployJob).toContain('id-token: write')
+    expect(verifyJob).toContain('permissions:')
+    expect(verifyJob).toContain('contents: read')
+    expect(verifyJob).not.toContain('pages: write')
+    expect(verifyJob).not.toContain('id-token: write')
   })
 
   it('verifies live Hostinger HSTS after deploy with the shared smoke test', () => {
@@ -129,8 +205,8 @@ describe('deploy workflow', () => {
 
     expect(verifyJob).toContain("if: github.ref == 'refs/heads/main'")
     expect(verifyJob).toContain('needs: deploy')
-    expect(verifyJob).toContain('uses: actions/checkout@v4')
-    expect(verifyJob).toContain('uses: actions/setup-node@v4')
+    expect(verifyJob).toContain('uses: actions/checkout@')
+    expect(verifyJob).toContain('uses: actions/setup-node@')
     expect(verifyJob).toContain('run: npm ci')
     expect(verifyJob).toContain(
       'EUROALT_LIVE_BASE_URL: https://european-alternatives.cloud',
