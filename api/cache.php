@@ -8,10 +8,117 @@ require_once __DIR__ . '/bootstrap.php';
 //
 // Eliminates DB connections for cache hits. Catalog data rarely changes,
 // so a 5-minute TTL keeps the site fast while limiting stale data.
+//
+// Cache files are trusted application state, so the default location must live
+// in private account-owned storage rather than shared /tmp.
 // ===========================================================================
 
-defined('EUROALT_CACHE_DIR') || define('EUROALT_CACHE_DIR', '/tmp/euroalt-cache/');
+defined('EUROALT_CACHE_DIR') || define('EUROALT_CACHE_DIR', '/home/u688914453/.local/state/euroalt-api-cache');
 defined('EUROALT_CACHE_TTL') || define('EUROALT_CACHE_TTL', 300);
+const EUROALT_CACHE_DIR_MODE = 0700;
+
+function getCacheDirectoryPath(): string
+{
+    $cacheDir = rtrim(EUROALT_CACHE_DIR, "/\\");
+    if ($cacheDir === '') {
+        throw new \RuntimeException('Cache directory is empty.');
+    }
+
+    return $cacheDir;
+}
+
+function logCacheWarning(string $message): void
+{
+    error_log('euroalt-cache: ' . $message);
+}
+
+function isCachePathOwnerValid(int|false $owner): bool
+{
+    $expectedOwner = function_exists('posix_geteuid') ? @posix_geteuid() : null;
+
+    return !is_int($owner) || !is_int($expectedOwner) || $expectedOwner < 0 || $owner === $expectedOwner;
+}
+
+function validateCacheDirectory(string $cacheDir): bool
+{
+    clearstatcache(true, $cacheDir);
+
+    if (is_link($cacheDir)) {
+        logCacheWarning('Rejecting symlinked cache directory: ' . $cacheDir);
+        return false;
+    }
+
+    if (!is_dir($cacheDir)) {
+        logCacheWarning('Cache directory path is not a directory: ' . $cacheDir);
+        return false;
+    }
+
+    $permissions = fileperms($cacheDir);
+    if ($permissions === false || ($permissions & 0077) !== 0) {
+        logCacheWarning('Rejecting cache directory with overly broad permissions: ' . $cacheDir);
+        return false;
+    }
+
+    if (!isCachePathOwnerValid(fileowner($cacheDir))) {
+        logCacheWarning('Rejecting cache directory owned by another user: ' . $cacheDir);
+        return false;
+    }
+
+    return true;
+}
+
+function ensureCacheDirectoryUsable(bool $createIfMissing): bool
+{
+    $cacheDir = getCacheDirectoryPath();
+
+    clearstatcache(true, $cacheDir);
+    if (is_link($cacheDir)) {
+        logCacheWarning('Rejecting symlinked cache directory: ' . $cacheDir);
+        return false;
+    }
+
+    if (!is_dir($cacheDir)) {
+        if (!$createIfMissing) {
+            return false;
+        }
+
+        if (!(@mkdir($cacheDir, EUROALT_CACHE_DIR_MODE, true) || is_dir($cacheDir))) {
+            logCacheWarning('Unable to create cache directory: ' . $cacheDir);
+            return false;
+        }
+    }
+
+    @chmod($cacheDir, EUROALT_CACHE_DIR_MODE);
+
+    return validateCacheDirectory($cacheDir);
+}
+
+function validateCacheFile(string $cacheFile): bool
+{
+    clearstatcache(true, $cacheFile);
+
+    if (is_link($cacheFile)) {
+        logCacheWarning('Rejecting symlinked cache file: ' . $cacheFile);
+        return false;
+    }
+
+    if (!is_file($cacheFile)) {
+        return false;
+    }
+
+    $permissions = fileperms($cacheFile);
+    if ($permissions === false || ($permissions & 0022) !== 0) {
+        logCacheWarning('Rejecting cache file with write permissions for group/world: ' . $cacheFile);
+        return false;
+    }
+
+    if (!isCachePathOwnerValid(fileowner($cacheFile))) {
+        logCacheWarning('Rejecting cache file owned by another user: ' . $cacheFile);
+        return false;
+    }
+
+    return true;
+}
 
 /**
  * Serve a cached response if a fresh cache file exists.
@@ -27,7 +134,7 @@ function serveCachedResponse(string $key, array $params = []): bool
 {
     $cacheFile = buildCachePath($key, $params);
 
-    if (!is_file($cacheFile)) {
+    if (!ensureCacheDirectoryUsable(false) || !validateCacheFile($cacheFile)) {
         return false;
     }
 
@@ -38,6 +145,13 @@ function serveCachedResponse(string $key, array $params = []): bool
 
     $content = file_get_contents($cacheFile);
     if ($content === false) {
+        return false;
+    }
+
+    $decoded = json_decode($content, true);
+    if (!is_array($decoded)) {
+        logCacheWarning('Rejecting invalid JSON cache payload: ' . $cacheFile);
+        @unlink($cacheFile);
         return false;
     }
 
@@ -71,18 +185,18 @@ function sendCacheableJsonResponse(string $key, array $params, array $payload): 
 
     // Write cache file atomically (temp file + rename)
     $cacheFile = buildCachePath($key, $params);
-    $cacheDir = dirname($cacheFile);
 
-    if (!is_dir($cacheDir)) {
-        @mkdir($cacheDir, 0755, true);
-    }
-
-    $pid = getmypid();
-    $tmpFile = $cacheFile . '.' . ($pid !== false ? $pid : bin2hex(random_bytes(4))) . '.tmp';
-    if (file_put_contents($tmpFile, $json) !== false) {
-        rename($tmpFile, $cacheFile);
-    } else {
-        @unlink($tmpFile);
+    if (ensureCacheDirectoryUsable(true)) {
+        $pid = getmypid();
+        $tmpFile = $cacheFile . '.' . ($pid !== false ? $pid : bin2hex(random_bytes(4))) . '.tmp';
+        if (file_put_contents($tmpFile, $json, LOCK_EX) !== false) {
+            @chmod($tmpFile, 0600);
+            if (!@rename($tmpFile, $cacheFile)) {
+                @unlink($tmpFile);
+            }
+        } else {
+            @unlink($tmpFile);
+        }
     }
 
     http_response_code(200);
@@ -105,11 +219,11 @@ function sendCacheableJsonResponse(string $key, array $params, array $payload): 
  */
 function invalidateCache(): void
 {
-    $dir = EUROALT_CACHE_DIR;
-
-    if (!is_dir($dir)) {
+    if (!ensureCacheDirectoryUsable(false)) {
         return;
     }
+
+    $dir = getCacheDirectoryPath() . DIRECTORY_SEPARATOR;
 
     $files = array_merge(
         glob($dir . '*.json') ?: [],
@@ -117,7 +231,9 @@ function invalidateCache(): void
     );
 
     foreach ($files as $file) {
-        @unlink($file);
+        if (!is_link($file) && is_file($file)) {
+            @unlink($file);
+        }
     }
 }
 
@@ -136,5 +252,5 @@ function buildCachePath(string $key, array $params): string
     ksort($params);
     $suffix = count($params) > 0 ? '_' . md5(json_encode($params)) : '';
 
-    return EUROALT_CACHE_DIR . $key . $suffix . '.json';
+    return getCacheDirectoryPath() . DIRECTORY_SEPARATOR . $key . $suffix . '.json';
 }

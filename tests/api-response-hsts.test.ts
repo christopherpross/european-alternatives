@@ -245,6 +245,7 @@ if (!is_dir(dirname($cacheFile))) {
     mkdir(dirname($cacheFile), 0755, true);
 }
 file_put_contents($cacheFile, json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
+chmod($cacheFile, 0600);
 
 serveCachedResponse('entries', ['locale' => 'en']);
 `,
