@@ -58,8 +58,9 @@ describe('validation workflow', () => {
     )
   })
 
-  it('runs audit, tests, typecheck, lint, and build', () => {
+  it('runs the secret scan before audit, tests, typecheck, lint, and build', () => {
     const workflow = readWorkflow(validationWorkflowUrl)
+    const secretScan = getCommandIndex(workflow, 'npm run secrets:scan')
     const audit = getCommandIndex(workflow, 'npm audit --audit-level=high')
     const test = getCommandIndex(workflow, 'npm test')
     const typecheck = getCommandIndex(
@@ -69,6 +70,7 @@ describe('validation workflow', () => {
     const lint = getCommandIndex(workflow, 'npm run lint')
     const build = getCommandIndex(workflow, 'npm run build')
 
+    expect(secretScan).toBeLessThan(audit)
     expect(audit).toBeLessThan(test)
     expect(test).toBeLessThan(typecheck)
     expect(typecheck).toBeLessThan(lint)
@@ -92,8 +94,9 @@ describe('deploy workflow', () => {
     )
   })
 
-  it('runs the validation gate before building and publishing dist', () => {
+  it('runs the secret scan and validation gate before building and publishing dist', () => {
     const workflow = readWorkflow(deployWorkflowUrl)
+    const secretScan = getCommandIndex(workflow, 'npm run secrets:scan')
     const audit = getCommandIndex(workflow, 'npm audit --audit-level=high')
     const test = getCommandIndex(workflow, 'npm test')
     const typecheck = getCommandIndex(
@@ -104,6 +107,7 @@ describe('deploy workflow', () => {
     const build = getCommandIndex(workflow, 'npm run build')
     const publish = workflow.indexOf('git add -f dist/')
 
+    expect(secretScan).toBeLessThan(audit)
     expect(audit).toBeLessThan(test)
     expect(test).toBeLessThan(typecheck)
     expect(typecheck).toBeLessThan(lint)

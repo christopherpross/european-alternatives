@@ -5,9 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prepare": "node scripts/install-git-hooks.mjs",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "hooks:install": "node scripts/install-git-hooks.mjs",
+    "secrets:scan": "node scripts/scan-secrets.mjs --tracked",
+    "secrets:scan:staged": "node scripts/scan-secrets.mjs --staged",
     "test": "vitest run --passWithNoTests",
     "db:import": "php scripts/db-import.php --source tmp/export/catalog.json",
     "db:backup": "bash scripts/db-backup.sh",
