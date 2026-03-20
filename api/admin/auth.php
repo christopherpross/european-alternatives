@@ -58,15 +58,85 @@ function validateTokenFormat(string $token): string
     return $token;
 }
 
-function getAdminAuthClientKey(): string
+function getAdminRequestIp(): string
 {
     $clientIp = $_SERVER['REMOTE_ADDR'] ?? '';
 
-    if (!is_string($clientIp) || $clientIp === '') {
+    if (!is_string($clientIp) || trim($clientIp) === '') {
         return 'unknown';
     }
 
-    return $clientIp;
+    return trim($clientIp);
+}
+
+function getAdminAuditUserAgent(): string
+{
+    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+
+    if (!is_string($userAgent) || $userAgent === '') {
+        return '';
+    }
+
+    $sanitizedUserAgent = preg_replace('/[\x00-\x1F\x7F]+/', ' ', $userAgent);
+    if (!is_string($sanitizedUserAgent)) {
+        return '';
+    }
+
+    return substr(trim($sanitizedUserAgent), 0, 100);
+}
+
+/**
+ * @param array<string, int|string> $fields
+ */
+function formatAdminAuditFields(array $fields): string
+{
+    $parts = [];
+
+    foreach ($fields as $name => $value) {
+        if (is_int($value)) {
+            $parts[] = sprintf('%s=%d', $name, $value);
+            continue;
+        }
+
+        if ($value !== '' && preg_match('/^[A-Za-z0-9._:\\/-]+$/', $value) === 1) {
+            $parts[] = sprintf('%s=%s', $name, $value);
+            continue;
+        }
+
+        $encodedValue = json_encode($value, JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+        $parts[] = sprintf('%s=%s', $name, is_string($encodedValue) ? $encodedValue : '""');
+    }
+
+    return implode(' ', $parts);
+}
+
+function logAdminMutationAuditSuccess(
+    string $action,
+    int $entryId,
+    string $slug,
+    string $status,
+    ?int $reasonLength = null
+): void {
+    $fields = [
+        'action' => $action,
+        'slug' => $slug,
+        'entry_id' => $entryId,
+        'status' => $status,
+    ];
+
+    if ($reasonLength !== null) {
+        $fields['reason_length'] = max(0, $reasonLength);
+    }
+
+    $fields['ip'] = getAdminRequestIp();
+    $fields['ua'] = getAdminAuditUserAgent();
+
+    error_log('euroalt-admin: audit ' . formatAdminAuditFields($fields));
+}
+
+function getAdminAuthClientKey(): string
+{
+    return getAdminRequestIp();
 }
 
 function adminAuthNow(): int
@@ -356,8 +426,8 @@ function registerAdminAuthFailure(string $clientKey, int $statusCode, string $me
 
 function denyAdminAuth(string $clientKey, int $statusCode, string $message): never
 {
-    $ip = !empty($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : 'unknown';
-    $ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 100);
+    $ip = getAdminRequestIp();
+    $ua = getAdminAuditUserAgent();
     error_log(sprintf('euroalt-admin: auth FAILED from %s reason=%s (UA: %s)', $ip, $message, $ua));
 
     try {
@@ -405,7 +475,7 @@ function requireAdminAuth(): void
     }
 
     if (hash_equals($expectedToken, $providedToken)) {
-        $ip = !empty($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : 'unknown';
+        $ip = getAdminRequestIp();
         error_log(sprintf('euroalt-admin: auth OK from %s', $ip));
         // A successful CLI submission should not keep the maintainer locked out behind old failures.
         safeClearAdminAuthRateLimitState($clientKey);

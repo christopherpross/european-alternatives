@@ -455,6 +455,7 @@ try {
     }
 
     $pdo->commit();
+    logAdminMutationAuditSuccess('add-alternative', $entryId, $slug, $status);
     invalidateCache();
 
     sendJsonResponse(201, [

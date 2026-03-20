@@ -235,6 +235,7 @@ try {
     ]);
 
     $pdo->commit();
+    logAdminMutationAuditSuccess('deny-alternative', $entryId, $slug, 'denied', strlen($denyReason));
     invalidateCache();
 
     sendJsonResponse(201, [

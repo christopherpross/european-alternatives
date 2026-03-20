@@ -11,11 +11,265 @@ const adminAuthPath = resolve('api/admin/auth.php')
 const addAlternativePath = resolve('api/admin/add-alternative.php')
 const denyAlternativePath = resolve('api/admin/deny-alternative.php')
 const adminAuthSource = readFileSync(adminAuthPath, 'utf8')
+const addAlternativeSource = readFileSync(addAlternativePath, 'utf8')
+const denyAlternativeSource = readFileSync(denyAlternativePath, 'utf8')
 const authRunnerCode = `<?php
 declare(strict_types=1);
 require ${JSON.stringify(adminAuthPath)};
 requireAdminAuth();
 sendJsonResponse(200, ['ok' => true]);
+`
+const addAlternativeSuccessRunnerCode = `<?php
+declare(strict_types=1);
+require ${JSON.stringify(adminAuthPath)};
+
+final class TestAddAlternativeStatement
+{
+    public function __construct(
+        private TestAddAlternativePdo $pdo,
+        private string $sql,
+    ) {
+    }
+
+    private array $lastParams = [];
+
+    public function execute(array $params = []): bool
+    {
+        $this->lastParams = $params;
+        $this->pdo->handleExecute($this->sql, $params);
+
+        return true;
+    }
+
+    public function fetch(): array|false
+    {
+        return $this->pdo->handleFetch($this->sql, $this->lastParams);
+    }
+
+    public function fetchAll(int $mode = 0): array
+    {
+        return $this->pdo->handleFetchAll($this->sql, $this->lastParams, $mode);
+    }
+}
+
+final class TestAddAlternativePdo
+{
+    private bool $inTransaction = false;
+    private int $lastInsertedId = 0;
+
+    public function beginTransaction(): bool
+    {
+        $this->inTransaction = true;
+
+        return true;
+    }
+
+    public function prepare(string $sql): TestAddAlternativeStatement
+    {
+        return new TestAddAlternativeStatement($this, $sql);
+    }
+
+    public function lastInsertId(?string $name = null): string
+    {
+        return (string) $this->lastInsertedId;
+    }
+
+    public function commit(): bool
+    {
+        $this->inTransaction = false;
+
+        return true;
+    }
+
+    public function rollBack(): bool
+    {
+        $this->inTransaction = false;
+
+        return true;
+    }
+
+    public function inTransaction(): bool
+    {
+        return $this->inTransaction;
+    }
+
+    public function handleExecute(string $sql, array $params): void
+    {
+        if (str_contains($sql, 'SELECT code FROM countries')) {
+            return;
+        }
+
+        if (str_contains($sql, 'SELECT id FROM categories WHERE id IN')) {
+            return;
+        }
+
+        if (str_contains($sql, 'SELECT id FROM catalog_entries WHERE slug = :slug')) {
+            return;
+        }
+
+        if (str_contains($sql, 'INSERT INTO catalog_entries')) {
+            $this->lastInsertedId = 1001;
+            return;
+        }
+
+        if (str_contains($sql, 'INSERT INTO entry_categories')) {
+            return;
+        }
+
+        throw new RuntimeException('Unexpected execute SQL: ' . $sql);
+    }
+
+    public function handleFetch(string $sql, array $params): array|false
+    {
+        if (str_contains($sql, 'SELECT code FROM countries')) {
+            return ['code' => $params['code']];
+        }
+
+        if (str_contains($sql, 'SELECT id FROM catalog_entries WHERE slug = :slug')) {
+            return false;
+        }
+
+        throw new RuntimeException('Unexpected fetch SQL: ' . $sql);
+    }
+
+    public function handleFetchAll(string $sql, array $params, int $mode): array
+    {
+        if (str_contains($sql, 'SELECT id FROM categories WHERE id IN')) {
+            return array_values($params);
+        }
+
+        throw new RuntimeException('Unexpected fetchAll SQL: ' . $sql);
+    }
+}
+
+function getDatabaseConnection()
+{
+    return new TestAddAlternativePdo();
+}
+
+function invalidateCache(): void
+{
+}
+
+${stripAdminEndpointSource(addAlternativeSource)}
+`
+const denyAlternativeSuccessRunnerCode = `<?php
+declare(strict_types=1);
+require ${JSON.stringify(adminAuthPath)};
+
+final class TestDenyAlternativeStatement
+{
+    public function __construct(
+        private TestDenyAlternativePdo $pdo,
+        private string $sql,
+    ) {
+    }
+
+    private array $lastParams = [];
+
+    public function execute(array $params = []): bool
+    {
+        $this->lastParams = $params;
+        $this->pdo->handleExecute($this->sql, $params);
+
+        return true;
+    }
+
+    public function fetch(): array|false
+    {
+        return $this->pdo->handleFetch($this->sql, $this->lastParams);
+    }
+
+    public function fetchAll(int $mode = 0): array
+    {
+        return $this->pdo->handleFetchAll($this->sql, $this->lastParams, $mode);
+    }
+}
+
+final class TestDenyAlternativePdo
+{
+    private bool $inTransaction = false;
+    private int $lastInsertedId = 0;
+
+    public function beginTransaction(): bool
+    {
+        $this->inTransaction = true;
+
+        return true;
+    }
+
+    public function prepare(string $sql): TestDenyAlternativeStatement
+    {
+        return new TestDenyAlternativeStatement($this, $sql);
+    }
+
+    public function lastInsertId(?string $name = null): string
+    {
+        return (string) $this->lastInsertedId;
+    }
+
+    public function commit(): bool
+    {
+        $this->inTransaction = false;
+
+        return true;
+    }
+
+    public function rollBack(): bool
+    {
+        $this->inTransaction = false;
+
+        return true;
+    }
+
+    public function inTransaction(): bool
+    {
+        return $this->inTransaction;
+    }
+
+    public function handleExecute(string $sql, array $params): void
+    {
+        if (str_contains($sql, 'SELECT id, status FROM catalog_entries WHERE slug = :slug')) {
+            return;
+        }
+
+        if (str_contains($sql, 'INSERT INTO catalog_entries')) {
+            $this->lastInsertedId = 2001;
+            return;
+        }
+
+        if (str_contains($sql, 'INSERT INTO denied_decisions')) {
+            return;
+        }
+
+        throw new RuntimeException('Unexpected execute SQL: ' . $sql);
+    }
+
+    public function handleFetch(string $sql, array $params): array|false
+    {
+        if (str_contains($sql, 'SELECT id, status FROM catalog_entries WHERE slug = :slug')) {
+            return false;
+        }
+
+        throw new RuntimeException('Unexpected fetch SQL: ' . $sql);
+    }
+
+    public function handleFetchAll(string $sql, array $params, int $mode): array
+    {
+        throw new RuntimeException('Unexpected fetchAll SQL: ' . $sql);
+    }
+}
+
+function getDatabaseConnection()
+{
+    return new TestDenyAlternativePdo();
+}
+
+function invalidateCache(): void
+{
+}
+
+${stripAdminEndpointSource(denyAlternativeSource)}
 `
 const validToken = 'b'.repeat(64)
 const tempPaths: string[] = []
@@ -31,10 +285,20 @@ type AuthResponse = {
 
 type AuthRequestOptions = {
   authorization?: string
+  body?: string
   now: number
   rateLimitDir: string
   remoteAddr?: string
   userAgent?: string
+}
+
+function stripAdminEndpointSource(source: string): string {
+  return source
+    .replace(/^<\?php\s*/, '')
+    .replace("declare(strict_types=1);\n\n", '')
+    .replace("require_once __DIR__ . '/../db.php';\n", '')
+    .replace("require_once __DIR__ . '/../cache.php';\n", '')
+    .replace("require_once __DIR__ . '/auth.php';\n", '')
 }
 
 function createTempPath(prefix: string): string {
@@ -93,6 +357,7 @@ async function runPhpAuthRequest(
   const response = await php.runStream({
     code,
     method: 'POST',
+    body: options.body,
     env: {
       EUROALT_ADMIN_AUTH_NOW: String(options.now),
       EUROALT_ADMIN_RATE_LIMIT_DIR: options.rateLimitDir,
@@ -430,6 +695,96 @@ describe('admin auth audit logging', () => {
     expect(response.status).toBe(403)
     expect(response.stderr).not.toContain(secretToken)
     expect(response.stderr).toContain('euroalt-admin: auth FAILED')
+  })
+})
+
+describe('admin mutation audit logging', () => {
+  it('formats structured mutation audit logs with sanitized request context', async () => {
+    const rateLimitDir = createTempPath('euroalt-admin-rate-limit-')
+    const longUserAgent = `Research Bot ${'A'.repeat(120)}`
+
+    const response = await runPhpAuthRequest(
+      `<?php
+declare(strict_types=1);
+require ${JSON.stringify(adminAuthPath)};
+logAdminMutationAuditSuccess('deny-alternative', 77, 'blocked-service', 'denied', 321);
+sendJsonResponse(200, ['ok' => true]);
+`,
+      {
+        now: 10_700,
+        rateLimitDir,
+        remoteAddr: '',
+        userAgent: longUserAgent,
+      },
+    )
+
+    expect(response.status).toBe(200)
+    expect(response.stderr).toContain(
+      'euroalt-admin: audit action=deny-alternative slug=blocked-service entry_id=77 status=denied reason_length=321 ip=unknown',
+    )
+    expect(response.stderr).toContain(`ua=${JSON.stringify(longUserAgent.slice(0, 100))}`)
+    expect(response.stderr).not.toContain(longUserAgent.slice(0, 101))
+  })
+
+  it('logs successful add-alternative mutations after auth with slug, entry id, and request metadata', async () => {
+    const rateLimitDir = createTempPath('euroalt-admin-rate-limit-')
+    const response = await runPhpAuthRequest(addAlternativeSuccessRunnerCode, {
+      authorization: `Bearer ${validToken}`,
+      body: JSON.stringify({
+        slug: 'eurostack-mail',
+        name: 'Eurostack Mail',
+        description_en: 'European email alternative.',
+        country_code: 'de',
+        website_url: 'https://eurostack.example',
+        categories: [{ category_id: 'email', is_primary: true }],
+        tags: [],
+        replaces_us: [],
+      }),
+      now: 11_200,
+      rateLimitDir,
+      remoteAddr: '198.51.100.60',
+      userAgent: 'TestBot/2.0',
+    })
+
+    expect(response.status).toBe(201)
+    expect(response.json).toEqual({
+      ok: true,
+      entry_id: 1001,
+      slug: 'eurostack-mail',
+    })
+    expect(response.stderr).toContain('euroalt-admin: auth OK from 198.51.100.60')
+    expect(response.stderr).toContain(
+      'euroalt-admin: audit action=add-alternative slug=eurostack-mail entry_id=1001 status=alternative ip=198.51.100.60 ua=TestBot/2.0',
+    )
+  })
+
+  it('logs successful deny-alternative mutations with reason length but not the raw denial text', async () => {
+    const rateLimitDir = createTempPath('euroalt-admin-rate-limit-')
+    const denyReason = 'Fails gateway criteria because it is just a wrapper around a US service.'
+    const response = await runPhpAuthRequest(denyAlternativeSuccessRunnerCode, {
+      authorization: `Bearer ${validToken}`,
+      body: JSON.stringify({
+        slug: 'wrapper-service',
+        name: 'Wrapper Service',
+        deny_reason: denyReason,
+      }),
+      now: 11_300,
+      rateLimitDir,
+      remoteAddr: '198.51.100.61',
+      userAgent: 'Research Bot/3.0',
+    })
+
+    expect(response.status).toBe(201)
+    expect(response.json).toEqual({
+      ok: true,
+      entry_id: 2001,
+      slug: 'wrapper-service',
+      status: 'denied',
+    })
+    expect(response.stderr).toContain(
+      `euroalt-admin: audit action=deny-alternative slug=wrapper-service entry_id=2001 status=denied reason_length=${denyReason.length} ip=198.51.100.61 ua="Research Bot/3.0"`,
+    )
+    expect(response.stderr).not.toContain(denyReason)
   })
 })
 
