@@ -10,6 +10,7 @@ import {
   expectFallbackShellCspCompatibility,
   expectMainAppShellCspCompatibility,
 } from './support/html-csp'
+import { expectMetaReferrerPolicy } from './support/referrer-policy'
 
 const tempBuildDir = mkdtempSync(join(tmpdir(), 'euroalt-csp-build-'))
 
@@ -36,9 +37,11 @@ afterAll(() => {
 describe('build artifact CSP compatibility', () => {
   it('keeps the generated main HTML shell free of inline scripts and styles', () => {
     expectMainAppShellCspCompatibility(builtIndexSource)
+    expectMetaReferrerPolicy(builtIndexSource)
   })
 
   it('keeps the generated 404 fallback free of inline scripts and ships a meta CSP', () => {
     expectFallbackShellCspCompatibility(builtNotFoundSource)
+    expectMetaReferrerPolicy(builtNotFoundSource)
   })
 })

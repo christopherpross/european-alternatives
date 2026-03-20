@@ -13,6 +13,7 @@ const APP_ENV_LOADER_PATH_ENV = 'EUROALT_ENV_LOADER';
 const DEFAULT_ENV_LOADER_PATH = '/home/u688914453/.secrets/euroalt-db-env.php';
 const STRICT_TRANSPORT_SECURITY_HEADER_VALUE = 'max-age=31536000; includeSubDomains; preload';
 const CONTENT_SECURITY_POLICY_HEADER_VALUE = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests";
+const REFERRER_POLICY_HEADER_VALUE = 'strict-origin-when-cross-origin';
 const X_FRAME_OPTIONS_HEADER_VALUE = 'DENY';
 
 /**
@@ -30,6 +31,14 @@ function sendStrictTransportSecurityHeader(): void
 function sendContentSecurityPolicyHeader(): void
 {
     header('Content-Security-Policy: ' . CONTENT_SECURITY_POLICY_HEADER_VALUE);
+}
+
+/**
+ * Keep API responses aligned with the repo-owned referrer policy baseline.
+ */
+function sendReferrerPolicyHeader(): void
+{
+    header('Referrer-Policy: ' . REFERRER_POLICY_HEADER_VALUE);
 }
 
 /**
@@ -51,6 +60,7 @@ function sendJsonResponse(int $statusCode, array $payload): never
     header('Pragma: no-cache');
     sendStrictTransportSecurityHeader();
     sendContentSecurityPolicyHeader();
+    sendReferrerPolicyHeader();
     sendXFrameOptionsHeader();
     header('X-Content-Type-Options: nosniff');
 

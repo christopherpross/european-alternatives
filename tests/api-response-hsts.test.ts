@@ -11,6 +11,7 @@ const cachePath = resolve('api/cache.php')
 const expectedHstsValue = 'max-age=31536000; includeSubDomains; preload'
 const expectedCspValue =
   "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+const expectedReferrerPolicyValue = 'strict-origin-when-cross-origin'
 const expectedXfoValue = 'DENY'
 const tempPaths: string[] = []
 
@@ -89,8 +90,8 @@ afterAll(async () => {
   }
 })
 
-describe('API response HSTS fallback', () => {
-  it('adds HSTS to JSON success responses from bootstrap helpers', async () => {
+describe('API response security header fallback', () => {
+  it('adds repo-owned security headers to JSON success responses from bootstrap helpers', async () => {
     const response = await runPhpResponse({
       code: `<?php
 declare(strict_types=1);
@@ -107,6 +108,9 @@ sendJsonResponse(201, ['ok' => true]);
     expect(getHeader(response.headers, 'Content-Security-Policy')).toBe(
       expectedCspValue,
     )
+    expect(getHeader(response.headers, 'Referrer-Policy')).toBe(
+      expectedReferrerPolicyValue,
+    )
     expect(getHeader(response.headers, 'X-Content-Type-Options')).toBe(
       'nosniff',
     )
@@ -115,7 +119,7 @@ sendJsonResponse(201, ['ok' => true]);
     )
   })
 
-  it('adds HSTS to JSON error responses from bootstrap helpers', async () => {
+  it('adds repo-owned security headers to JSON error responses from bootstrap helpers', async () => {
     const response = await runPhpResponse({
       code: `<?php
 declare(strict_types=1);
@@ -135,12 +139,15 @@ jsonError(403, 'forbidden');
     expect(getHeader(response.headers, 'Content-Security-Policy')).toBe(
       expectedCspValue,
     )
+    expect(getHeader(response.headers, 'Referrer-Policy')).toBe(
+      expectedReferrerPolicyValue,
+    )
     expect(getHeader(response.headers, 'X-Frame-Options')).toBe(
       expectedXfoValue,
     )
   })
 
-  it('adds HSTS to cache-miss responses', async () => {
+  it('adds repo-owned security headers to cache-miss responses', async () => {
     const cacheDir = `${createTempPath('euroalt-hsts-cache-miss-')}/`
     const response = await runPhpResponse({
       code: `<?php
@@ -160,13 +167,16 @@ sendCacheableJsonResponse('entries', ['locale' => 'en'], ['data' => []]);
     expect(getHeader(response.headers, 'Content-Security-Policy')).toBe(
       expectedCspValue,
     )
+    expect(getHeader(response.headers, 'Referrer-Policy')).toBe(
+      expectedReferrerPolicyValue,
+    )
     expect(getHeader(response.headers, 'X-Cache')).toBe('MISS')
     expect(getHeader(response.headers, 'X-Frame-Options')).toBe(
       expectedXfoValue,
     )
   })
 
-  it('adds HSTS to cache-hit responses', async () => {
+  it('adds repo-owned security headers to cache-hit responses', async () => {
     const cacheDir = `${createTempPath('euroalt-hsts-cache-hit-')}/`
     const response = await runPhpResponse({
       code: `<?php
@@ -195,6 +205,9 @@ serveCachedResponse('entries', ['locale' => 'en']);
     )
     expect(getHeader(response.headers, 'Content-Security-Policy')).toBe(
       expectedCspValue,
+    )
+    expect(getHeader(response.headers, 'Referrer-Policy')).toBe(
+      expectedReferrerPolicyValue,
     )
     expect(getHeader(response.headers, 'X-Cache')).toBe('HIT')
     expect(getHeader(response.headers, 'X-Frame-Options')).toBe(

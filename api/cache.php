@@ -46,6 +46,7 @@ function serveCachedResponse(string $key, array $params = []): bool
     header('Cache-Control: public, max-age=' . EUROALT_CACHE_TTL . ', stale-while-revalidate=60');
     sendStrictTransportSecurityHeader();
     sendContentSecurityPolicyHeader();
+    sendReferrerPolicyHeader();
     sendXFrameOptionsHeader();
     header('X-Content-Type-Options: nosniff');
     header('X-Cache: HIT');
@@ -88,6 +89,7 @@ function sendCacheableJsonResponse(string $key, array $params, array $payload): 
     header('Cache-Control: public, max-age=' . EUROALT_CACHE_TTL . ', stale-while-revalidate=60');
     sendStrictTransportSecurityHeader();
     sendContentSecurityPolicyHeader();
+    sendReferrerPolicyHeader();
     sendXFrameOptionsHeader();
     header('X-Content-Type-Options: nosniff');
     header('X-Cache: MISS');
