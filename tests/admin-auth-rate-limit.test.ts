@@ -8,6 +8,8 @@ import { PHP } from '@php-wasm/universal'
 import { afterAll, describe, expect, it } from 'vitest'
 
 const adminAuthPath = resolve('api/admin/auth.php')
+const addAlternativePath = resolve('api/admin/add-alternative.php')
+const denyAlternativePath = resolve('api/admin/deny-alternative.php')
 const adminAuthSource = readFileSync(adminAuthPath, 'utf8')
 const authRunnerCode = `<?php
 declare(strict_types=1);
@@ -25,6 +27,14 @@ type AuthResponse = {
   headers: Record<string, string[]>
   json: unknown
   stderr: string
+}
+
+type AuthRequestOptions = {
+  authorization?: string
+  now: number
+  rateLimitDir: string
+  remoteAddr?: string
+  userAgent?: string
 }
 
 function createTempPath(prefix: string): string {
@@ -75,16 +85,13 @@ function getHeader(headers: Record<string, string[]>, name: string): string | un
   return undefined
 }
 
-async function runAuthRequest(options: {
-  authorization?: string
-  now: number
-  rateLimitDir: string
-  remoteAddr?: string
-  userAgent?: string
-}): Promise<AuthResponse> {
+async function runPhpAuthRequest(
+  code: string,
+  options: AuthRequestOptions,
+): Promise<AuthResponse> {
   const php = await getPhp()
   const response = await php.runStream({
-    code: authRunnerCode,
+    code,
     method: 'POST',
     env: {
       EUROALT_ADMIN_AUTH_NOW: String(options.now),
@@ -111,6 +118,23 @@ async function runAuthRequest(options: {
     json: JSON.parse(stdoutText) as unknown,
     stderr: stderrText,
   }
+}
+
+async function runAuthRequest(options: AuthRequestOptions): Promise<AuthResponse> {
+  return runPhpAuthRequest(authRunnerCode, options)
+}
+
+async function runAdminEndpointRequest(
+  endpointPath: string,
+  options: AuthRequestOptions,
+): Promise<AuthResponse> {
+  return runPhpAuthRequest(
+    `<?php
+declare(strict_types=1);
+require ${JSON.stringify(endpointPath)};
+`,
+    options,
+  )
 }
 
 afterAll(async () => {
@@ -406,5 +430,61 @@ describe('admin auth audit logging', () => {
     expect(response.status).toBe(403)
     expect(response.stderr).not.toContain(secretToken)
     expect(response.stderr).toContain('euroalt-admin: auth FAILED')
+  })
+})
+
+describe('admin auth on real admin endpoints', () => {
+  it('rejects unauthenticated add-alternative requests before body validation and logs the attempt', async () => {
+    const rateLimitDir = createTempPath('euroalt-admin-rate-limit-')
+    const remoteAddr = '198.51.100.50'
+
+    const response = await runAdminEndpointRequest(addAlternativePath, {
+      now: 11_000,
+      rateLimitDir,
+      remoteAddr,
+    })
+
+    expect(response.status).toBe(401)
+    expect(response.json).toEqual({
+      ok: false,
+      error: 'missing_authorization',
+    })
+    expect(response.stderr).toContain(
+      'euroalt-admin: auth FAILED from 198.51.100.50 reason=missing_authorization',
+    )
+  })
+
+  it('applies the shared auth rate limiter to deny-alternative.php', async () => {
+    const rateLimitDir = createTempPath('euroalt-admin-rate-limit-')
+    const remoteAddr = '198.51.100.51'
+
+    for (let offset = 0; offset < 5; offset += 1) {
+      const response = await runAdminEndpointRequest(denyAlternativePath, {
+        authorization: 'Bearer wrong-token',
+        now: 11_100 + offset,
+        rateLimitDir,
+        remoteAddr,
+      })
+
+      expect(response.status).toBe(403)
+      expect(response.json).toEqual({ ok: false, error: 'forbidden' })
+    }
+
+    const throttledResponse = await runAdminEndpointRequest(denyAlternativePath, {
+      authorization: 'Bearer wrong-token',
+      now: 11_105,
+      rateLimitDir,
+      remoteAddr,
+    })
+
+    expect(throttledResponse.status).toBe(429)
+    expect(throttledResponse.json).toEqual({
+      ok: false,
+      error: 'too_many_auth_attempts',
+    })
+    expect(getHeader(throttledResponse.headers, 'Retry-After')).toBe('895')
+    expect(throttledResponse.stderr).toContain(
+      'euroalt-admin: auth FAILED from 198.51.100.51 reason=forbidden',
+    )
   })
 })
