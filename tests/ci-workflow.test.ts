@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
+const dependabotConfigUrl = new URL('../.github/dependabot.yml', import.meta.url)
 const workflowsDirectoryUrl = new URL('../.github/workflows/', import.meta.url)
 const validationWorkflowUrl = new URL(
   '../.github/workflows/validate.yml',
@@ -75,10 +76,28 @@ function getWorkflowHeader(workflow: string): string {
   return header
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+}
+
+function getDependabotUpdateBlock(config: string, ecosystem: string): string {
+  const updateBlockPattern = new RegExp(
+    `(?:^|\\n)  - package-ecosystem: ${escapeRegExp(ecosystem)}\\n([\\s\\S]*?)(?=\\n  - package-ecosystem:|$)`,
+    'u',
+  )
+  const match = config.match(updateBlockPattern)
+
+  expect(match, `Dependabot should configure ${ecosystem}`).not.toBeNull()
+
+  return match![0]
+}
+
 describe('validation workflow', () => {
-  it('runs on pull requests and pushes to main', () => {
+  it('runs on pull requests, pushes to main, and a weekly schedule', () => {
     const workflow = readWorkflow(validationWorkflowUrl)
 
+    expect(workflow).toContain('schedule:')
+    expect(workflow).toContain("- cron: '17 5 * * 1'")
     expect(workflow).toContain('pull_request:')
     expect(workflow).toMatch(/push:\s*\n\s*branches:\s*\['main'\]/)
   })
@@ -108,6 +127,55 @@ describe('validation workflow', () => {
     expect(test).toBeLessThan(typecheck)
     expect(typecheck).toBeLessThan(lint)
     expect(lint).toBeLessThan(build)
+  })
+})
+
+describe('dependabot configuration', () => {
+  it('configures a weekly npm update run', () => {
+    const config = readWorkflow(dependabotConfigUrl)
+    const npmUpdate = getDependabotUpdateBlock(config, 'npm')
+
+    expect(config).toContain('version: 2')
+    expect(npmUpdate).toContain('directory: /')
+    expect(npmUpdate).toContain('interval: weekly')
+    expect(npmUpdate).toContain('day: monday')
+    expect(npmUpdate).toContain("time: '06:00'")
+    expect(npmUpdate).toContain('timezone: Europe/Berlin')
+    expect(npmUpdate).toContain('open-pull-requests-limit: 10')
+    expect(npmUpdate).toContain('labels:')
+    expect(npmUpdate).toContain('- dependencies')
+    expect(npmUpdate).toContain('npm-minor-and-patch:')
+    expect(npmUpdate).toContain('- minor')
+    expect(npmUpdate).toContain('- patch')
+  })
+
+  it('configures a weekly GitHub Actions update run', () => {
+    const config = readWorkflow(dependabotConfigUrl)
+    const githubActionsUpdate = getDependabotUpdateBlock(
+      config,
+      'github-actions',
+    )
+
+    expect(config).toContain('version: 2')
+    expect(githubActionsUpdate).toContain('directory: /')
+    expect(githubActionsUpdate).toContain('interval: weekly')
+    expect(githubActionsUpdate).toContain('day: monday')
+    expect(githubActionsUpdate).toContain("time: '06:30'")
+    expect(githubActionsUpdate).toContain('timezone: Europe/Berlin')
+    expect(githubActionsUpdate).toContain('open-pull-requests-limit: 10')
+    expect(githubActionsUpdate).toContain('labels:')
+    expect(githubActionsUpdate).toContain('- dependencies')
+    expect(githubActionsUpdate).toContain('- ci')
+    expect(githubActionsUpdate).toContain('github-actions-minor-and-patch:')
+    expect(githubActionsUpdate).toContain('- minor')
+    expect(githubActionsUpdate).toContain('- patch')
+  })
+
+  it('scopes npm labels without the CI-specific tag', () => {
+    const config = readWorkflow(dependabotConfigUrl)
+    const npmUpdate = getDependabotUpdateBlock(config, 'npm')
+
+    expect(npmUpdate).not.toContain('- ci')
   })
 })
 

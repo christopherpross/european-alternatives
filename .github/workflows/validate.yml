@@ -1,6 +1,9 @@
 name: Validate
 
 on:
+  schedule:
+    # Weekly validation catches dependency drift even when no PRs or pushes land.
+    - cron: '17 5 * * 1'
   pull_request:
   push:
     branches: ['main']
