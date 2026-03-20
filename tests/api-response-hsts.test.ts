@@ -11,6 +11,7 @@ const cachePath = resolve('api/cache.php')
 const expectedHstsValue = 'max-age=31536000; includeSubDomains; preload'
 const expectedCspValue =
   "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+const expectedXfoValue = 'DENY'
 const tempPaths: string[] = []
 
 let phpPromise: Promise<PHP> | undefined
@@ -109,6 +110,9 @@ sendJsonResponse(201, ['ok' => true]);
     expect(getHeader(response.headers, 'X-Content-Type-Options')).toBe(
       'nosniff',
     )
+    expect(getHeader(response.headers, 'X-Frame-Options')).toBe(
+      expectedXfoValue,
+    )
   })
 
   it('adds HSTS to JSON error responses from bootstrap helpers', async () => {
@@ -130,6 +134,9 @@ jsonError(403, 'forbidden');
     )
     expect(getHeader(response.headers, 'Content-Security-Policy')).toBe(
       expectedCspValue,
+    )
+    expect(getHeader(response.headers, 'X-Frame-Options')).toBe(
+      expectedXfoValue,
     )
   })
 
@@ -154,6 +161,9 @@ sendCacheableJsonResponse('entries', ['locale' => 'en'], ['data' => []]);
       expectedCspValue,
     )
     expect(getHeader(response.headers, 'X-Cache')).toBe('MISS')
+    expect(getHeader(response.headers, 'X-Frame-Options')).toBe(
+      expectedXfoValue,
+    )
   })
 
   it('adds HSTS to cache-hit responses', async () => {
@@ -187,5 +197,8 @@ serveCachedResponse('entries', ['locale' => 'en']);
       expectedCspValue,
     )
     expect(getHeader(response.headers, 'X-Cache')).toBe('HIT')
+    expect(getHeader(response.headers, 'X-Frame-Options')).toBe(
+      expectedXfoValue,
+    )
   })
 })

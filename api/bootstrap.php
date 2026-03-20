@@ -13,6 +13,7 @@ const APP_ENV_LOADER_PATH_ENV = 'EUROALT_ENV_LOADER';
 const DEFAULT_ENV_LOADER_PATH = '/home/u688914453/.secrets/euroalt-db-env.php';
 const STRICT_TRANSPORT_SECURITY_HEADER_VALUE = 'max-age=31536000; includeSubDomains; preload';
 const CONTENT_SECURITY_POLICY_HEADER_VALUE = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests";
+const X_FRAME_OPTIONS_HEADER_VALUE = 'DENY';
 
 /**
  * Keep API responses aligned with the repo-level HSTS policy even when a request
@@ -32,6 +33,14 @@ function sendContentSecurityPolicyHeader(): void
 }
 
 /**
+ * Legacy clickjacking defense for browsers that do not support CSP frame-ancestors.
+ */
+function sendXFrameOptionsHeader(): void
+{
+    header('X-Frame-Options: ' . X_FRAME_OPTIONS_HEADER_VALUE);
+}
+
+/**
  * Send a JSON response and terminate.
  */
 function sendJsonResponse(int $statusCode, array $payload): never
@@ -42,6 +51,7 @@ function sendJsonResponse(int $statusCode, array $payload): never
     header('Pragma: no-cache');
     sendStrictTransportSecurityHeader();
     sendContentSecurityPolicyHeader();
+    sendXFrameOptionsHeader();
     header('X-Content-Type-Options: nosniff');
 
     echo json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);

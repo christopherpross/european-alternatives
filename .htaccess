@@ -8,6 +8,7 @@ RewriteEngine On
 <IfModule mod_headers.c>
     Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
     Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+    Header always set X-Frame-Options "DENY"
 </IfModule>
 
 # Enforce a single canonical origin early to avoid mixed host/protocol redirects.
