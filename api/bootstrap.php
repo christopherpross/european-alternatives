@@ -5,6 +5,16 @@ const APP_DB_CONFIG_ENV = 'EUROALT_DB_CONFIG';
 const DEFAULT_DB_CONFIG_PATH = '/home/u688914453/.secrets/euroalt-db.php';
 const APP_ENV_LOADER_PATH_ENV = 'EUROALT_ENV_LOADER';
 const DEFAULT_ENV_LOADER_PATH = '/home/u688914453/.secrets/euroalt-db-env.php';
+const STRICT_TRANSPORT_SECURITY_HEADER_VALUE = 'max-age=31536000; includeSubDomains; preload';
+
+/**
+ * Keep API responses aligned with the repo-level HSTS policy even when a request
+ * bypasses the root .htaccess layer in tests or alternate deployments.
+ */
+function sendStrictTransportSecurityHeader(): void
+{
+    header('Strict-Transport-Security: ' . STRICT_TRANSPORT_SECURITY_HEADER_VALUE);
+}
 
 /**
  * Send a JSON response and terminate.
@@ -15,6 +25,7 @@ function sendJsonResponse(int $statusCode, array $payload): never
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
     header('Pragma: no-cache');
+    sendStrictTransportSecurityHeader();
     header('X-Content-Type-Options: nosniff');
 
     echo json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);

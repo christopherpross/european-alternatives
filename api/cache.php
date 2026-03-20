@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/bootstrap.php';
+
 // ===========================================================================
 // Server-side file cache for API responses.
 //
@@ -8,8 +10,8 @@ declare(strict_types=1);
 // so a 5-minute TTL keeps the site fast while limiting stale data.
 // ===========================================================================
 
-define('EUROALT_CACHE_DIR', '/tmp/euroalt-cache/');
-define('EUROALT_CACHE_TTL', 300);
+defined('EUROALT_CACHE_DIR') || define('EUROALT_CACHE_DIR', '/tmp/euroalt-cache/');
+defined('EUROALT_CACHE_TTL') || define('EUROALT_CACHE_TTL', 300);
 
 /**
  * Serve a cached response if a fresh cache file exists.
@@ -42,6 +44,7 @@ function serveCachedResponse(string $key, array $params = []): bool
     http_response_code(200);
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: public, max-age=' . EUROALT_CACHE_TTL . ', stale-while-revalidate=60');
+    sendStrictTransportSecurityHeader();
     header('X-Content-Type-Options: nosniff');
     header('X-Cache: HIT');
 
@@ -81,6 +84,7 @@ function sendCacheableJsonResponse(string $key, array $params, array $payload): 
     http_response_code(200);
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: public, max-age=' . EUROALT_CACHE_TTL . ', stale-while-revalidate=60');
+    sendStrictTransportSecurityHeader();
     header('X-Content-Type-Options: nosniff');
     header('X-Cache: MISS');
 

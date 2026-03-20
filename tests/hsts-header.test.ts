@@ -7,7 +7,7 @@ const htaccessPath = resolve('.htaccess')
 const htaccessSource = readFileSync(htaccessPath, 'utf8')
 const normalizedLines = htaccessSource.split(/\r?\n/u).map((line) => line.trim())
 const expectedHstsDirective =
-  'Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"'
+  'Header always setifempty Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"'
 
 function getActiveHtaccessLines(source: string): string[] {
   return source
@@ -21,7 +21,7 @@ const activeLines = getActiveHtaccessLines(htaccessSource)
 describe('root .htaccess HSTS policy', () => {
   it('defines exactly one preload-ready HSTS directive via mod_headers', () => {
     const hstsLines = activeLines.filter((line) =>
-      line.startsWith('Header always set Strict-Transport-Security '),
+      line.startsWith('Header always setifempty Strict-Transport-Security '),
     )
 
     expect(hstsLines).toEqual([expectedHstsDirective])
@@ -52,5 +52,12 @@ describe('root .htaccess HSTS policy', () => {
       true,
     )
     expect(activeLines.some((line) => line.includes('preload'))).toBe(true)
+  })
+
+  it('uses setifempty so edge config does not duplicate the PHP HSTS fallback', () => {
+    expect(activeLines).toContain(expectedHstsDirective)
+    expect(activeLines).not.toContain(
+      'Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"',
+    )
   })
 })
