@@ -34,6 +34,14 @@ function getJobBlock(workflow: string, jobName: string): string {
   return match![0]
 }
 
+function getJobTimeoutMinutes(jobBlock: string): number {
+  const timeoutMatch = jobBlock.match(/timeout-minutes:\s*(\d+)/u)
+
+  expect(timeoutMatch).not.toBeNull()
+
+  return Number.parseInt(timeoutMatch![1], 10)
+}
+
 describe('validation workflow', () => {
   it('runs on pull requests and pushes to main', () => {
     const workflow = readWorkflow(validationWorkflowUrl)
@@ -127,6 +135,25 @@ describe('deploy workflow', () => {
     expect(verifyJob).toContain("EUROALT_LIVE_VERIFY_INTERVAL_MS: '15000'")
     expect(verifyJob).toContain(
       'run: npm test -- --run tests/hsts-live-deployment.test.ts',
+    )
+  })
+
+  it('keeps enough timeout budget for both post-deploy live verification steps', () => {
+    const workflow = readWorkflow(deployWorkflowUrl)
+    const verifyJob = getJobBlock(workflow, 'verify-production-hsts')
+
+    expect(getJobTimeoutMinutes(verifyJob)).toBeGreaterThanOrEqual(30)
+  })
+
+  it('verifies live Hostinger CSP-compatible HTML after deploy with the shared smoke test', () => {
+    const workflow = readWorkflow(deployWorkflowUrl)
+    const verifyJob = getJobBlock(workflow, 'verify-production-hsts')
+
+    expect(verifyJob).toContain(
+      'Verify live CSP-compatible HTML on Hostinger',
+    )
+    expect(verifyJob).toContain(
+      'run: npm test -- --run tests/csp-live-deployment.test.ts',
     )
   })
 })

@@ -3,11 +3,13 @@ import { resolve } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
+import { enforcedCspPolicy } from './support/html-csp'
+
 const htaccessPath = resolve('.htaccess')
 const htaccessSource = readFileSync(htaccessPath, 'utf8')
 const normalizedLines = htaccessSource.split(/\r?\n/u).map((line) => line.trim())
 const expectedCspDirective =
-  `Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"`
+  `Header always set Content-Security-Policy "${enforcedCspPolicy}"`
 
 function getActiveHtaccessLines(source: string): string[] {
   return source
