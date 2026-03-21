@@ -24,7 +24,7 @@ Developer reference for the PHP read API and MySQL database.
 
 ## API Endpoints
 
-All endpoints are read-only, return JSON, and are cached for 5 minutes (`Cache-Control: public, max-age=300`).
+Catalog endpoints are read-only, return JSON, and are cached for 5 minutes (`Cache-Control: public, max-age=300`). Operational health endpoints are uncached and may require authentication.
 
 | Method | URL | Query Params | Description |
 |---|---|---|---|
@@ -35,7 +35,7 @@ All endpoints are read-only, return JSON, and are cached for 5 minutes (`Cache-C
 | GET | `/api/catalog/tags` | -- | List all tags with slugs and optional labels. |
 | GET | `/api/catalog/further-reading` | -- | List curated further-reading resources. |
 | GET | `/api/catalog/landing-groups` | `locale` (en\|de) | Landing page category groups with nested category IDs. |
-| GET | `/api/health/db` | -- | Database health check (no caching). |
+| GET | `/api/health/db` | -- | Operational database readiness check (no caching, requires admin Bearer token, includes transport probe metadata when available). |
 
 Response envelope for list endpoints:
 
@@ -124,7 +124,32 @@ Database credentials are stored outside the web root on Hostinger:
 /home/u688914453/.secrets/euroalt-db-env.php
 ```
 
-Uses `putenv(...)` format. Required variables: `EUROALT_DB_HOST`, `EUROALT_DB_PORT`, `EUROALT_DB_NAME`, `EUROALT_DB_USER`, `EUROALT_DB_PASS`, `EUROALT_DB_CHARSET`.
+Uses `putenv(...)` format.
+
+Required variables:
+
+- `EUROALT_DB_HOST`
+- `EUROALT_DB_PORT`
+- `EUROALT_DB_NAME`
+- `EUROALT_DB_USER`
+- `EUROALT_DB_PASS`
+- `EUROALT_DB_CHARSET`
+
+Optional TLS variables for remote MySQL:
+
+- `EUROALT_DB_SSL_CA`
+- `EUROALT_DB_SSL_CAPATH`
+- `EUROALT_DB_SSL_CERT`
+- `EUROALT_DB_SSL_KEY`
+- `EUROALT_DB_SSL_CIPHER`
+- `EUROALT_DB_SSL_VERIFY_SERVER_CERT`
+- `EUROALT_DB_REQUIRE_TLS`
+
+Loopback development (`localhost`, `127.0.0.1`, `::1`) may leave these unset, empty, or `0`.
+
+Remote database hosts must set `EUROALT_DB_REQUIRE_TLS=1`, must provide `EUROALT_DB_SSL_CA` (or `EUROALT_DB_SSL_CAPATH`), and must set `EUROALT_DB_SSL_VERIFY_SERVER_CERT=1`. The app rejects non-loopback DB configs that do not meet that contract.
+
+Remote deployments should also keep MySQL secure transport mandatory on the server or account side (`require_secure_transport=ON`, `REQUIRE SSL`, or `REQUIRE X509`). PDO's TLS attributes add the client materials and verification settings, while the server-side requirement prevents fallback to plaintext if encrypted transport cannot be established.
 
 See `api/config/db.env.example.php` for the template.
 

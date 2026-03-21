@@ -275,7 +275,6 @@ export default function AlternativeCard({ alternative, viewMode, usVendorLookup,
       className={`alt-card ${viewMode === 'list' ? 'list-view' : ''}`}
       whileHover={!overlayMode ? { scale: viewMode === 'grid' ? 1.02 : 1.01 } : undefined}
       transition={{ duration: 0.2 }}
-      layout={!overlayMode}
     >
       <div className="alt-card-header">
         <div className="alt-card-logo-wrap">

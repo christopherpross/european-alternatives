@@ -23,6 +23,12 @@
   "openSourcePartial": "Teilweise Open Source",
   "proprietary": "Proprietär",
   "replaces": "Ersetzt:",
+  "theme": {
+    "toggle": "Design: {{mode}}",
+    "system": "System",
+    "light": "Hell",
+    "dark": "Dunkel"
+  },
   "meta": {
     "title": "Europäische Alternativen - Europäische & Open-Source-Software entdecken",
     "description": "Entdecke europäische und Open-Source-Alternativen zu US-Tech-Giganten. Unterstütze digitale Souveränität, Datenschutz und lokale Innovation.",
