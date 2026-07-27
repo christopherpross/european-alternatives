@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate, Outlet, useParams, useSearchParams } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet, useParams, useSearchParams } from 'react-router';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import Layout from './Layout';
@@ -7,6 +7,7 @@ import BrowsePage from './BrowsePage';
 import FurtherReadingPage from './FurtherReadingPage';
 import DeniedPage from './DeniedPage';
 import { CatalogProvider } from '../contexts/CatalogContext';
+import { ThemeProvider } from '../contexts/ThemeContext';
 import { supportedLanguages, defaultLanguage, localeMap, detectBrowserLanguage, type SupportedLanguage } from '../i18n';
 
 function LocaleLayout() {
@@ -118,20 +119,22 @@ function CatchAllRedirect() {
 
 export default function App() {
   return (
-    <CatalogProvider>
-      <Routes>
-        <Route path="/:lang" element={<LocaleLayout />}>
-          <Route index element={<LandingPage />} />
-          <Route path="browse" element={<BrowsePage />} />
-          <Route path="further-reading" element={<FurtherReadingPage />} />
-          <Route path="denied" element={<DeniedPage />} />
-        </Route>
-        <Route path="/" element={<LanguageRedirect />} />
-        <Route path="/browse" element={<BrowseRedirect />} />
-        <Route path="/further-reading" element={<FurtherReadingRedirect />} />
-        <Route path="/denied" element={<DeniedRedirect />} />
-        <Route path="*" element={<CatchAllRedirect />} />
-      </Routes>
-    </CatalogProvider>
+    <ThemeProvider>
+      <CatalogProvider>
+        <Routes>
+          <Route path="/:lang" element={<LocaleLayout />}>
+            <Route index element={<LandingPage />} />
+            <Route path="browse" element={<BrowsePage />} />
+            <Route path="further-reading" element={<FurtherReadingPage />} />
+            <Route path="denied" element={<DeniedPage />} />
+          </Route>
+          <Route path="/" element={<LanguageRedirect />} />
+          <Route path="/browse" element={<BrowseRedirect />} />
+          <Route path="/further-reading" element={<FurtherReadingRedirect />} />
+          <Route path="/denied" element={<DeniedRedirect />} />
+          <Route path="*" element={<CatchAllRedirect />} />
+        </Routes>
+      </CatalogProvider>
+    </ThemeProvider>
   );
 }

@@ -104,7 +104,7 @@ $websiteUrl = trim($body['website_url']);
 validatePublicUrl($websiteUrl, 'website_url');
 
 // Validate enums
-$validStatuses = ['alternative', 'draft'];
+$validStatuses = ['alternative', 'us', 'draft'];
 $status = $body['status'] ?? 'alternative';
 if (!in_array($status, $validStatuses, true)) {
     jsonError(400, 'invalid_status');
@@ -172,7 +172,7 @@ if (!is_array($replacesUs)) {
 try {
     $pdo = getDatabaseConnection();
 } catch (Throwable $e) {
-    error_log('euroalt-admin: DB connection failed: ' . $e->getMessage());
+    logAdminMessage('euroalt-admin: DB connection failed: ' . $e->getMessage());
     jsonError(500, 'database_unavailable');
 }
 
@@ -292,7 +292,6 @@ try {
         'slug' => $slug,
         'status' => $status,
         'source_file' => 'research',
-        // 'us' included for forward compatibility — currently only 'alternative' and 'draft' pass validation
         'is_active' => in_array($status, ['alternative', 'us'], true) ? 1 : 0,
         'name' => $name,
         'description_en' => trim($body['description_en']),
@@ -328,6 +327,20 @@ try {
             'sort_order' => $c['sort_order'],
         ]);
     }
+
+    // 6b. Initialize open matrix fact rows for every matrix-enabled category
+    // on the new entry. Non-matrix categories naturally insert zero rows.
+    $matrixFactStmt = $pdo->prepare('
+        INSERT IGNORE INTO matrix_facts (entry_id, category_id, criterion_id, status)
+        SELECT ec.entry_id, mc.category_id, mc.id, :status
+        FROM entry_categories ec
+        JOIN matrix_criteria mc ON mc.category_id = ec.category_id
+        WHERE ec.entry_id = :entry_id
+    ');
+    $matrixFactStmt->execute([
+        'entry_id' => $entryId,
+        'status' => 'open',
+    ]);
 
     // 7. Auto-create tags if needed, INSERT into entry_tags (deduplicate first)
     if (count($tags) > 0) {
@@ -440,7 +453,7 @@ try {
                         $replacedEntryId = (int) $pdo->lastInsertId();
                         // Add self-alias so future lookups by name resolve immediately
                         $createAliasStmt->execute(['alias' => $rawName, 'entry_id' => $replacedEntryId]);
-                        error_log("euroalt-admin: auto-created US vendor '$rawName' (id=$replacedEntryId, slug=$vendorSlug)");
+                        logAdminMessage("euroalt-admin: auto-created US vendor '$rawName' (id=$replacedEntryId, slug=$vendorSlug)");
                     }
                 }
             }
@@ -455,6 +468,7 @@ try {
     }
 
     $pdo->commit();
+    logAdminMutationAuditSuccess('add-alternative', $entryId, $slug, $status);
     invalidateCache();
 
     sendJsonResponse(201, [
@@ -468,15 +482,15 @@ try {
     }
     // MySQL error 1062 = duplicate key — return 409 instead of generic 500
     if ($e->errorInfo[1] === 1062) {
-        error_log('euroalt-admin: duplicate key: ' . $e->getMessage());
+        logAdminMessage('euroalt-admin: duplicate key: ' . $e->getMessage());
         jsonError(409, 'duplicate_entry');
     }
-    error_log('euroalt-admin: add-alternative failed: ' . $e->getMessage());
+    logAdminMessage('euroalt-admin: add-alternative failed: ' . $e->getMessage());
     jsonError(500, 'internal_error');
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
-    error_log('euroalt-admin: add-alternative failed: ' . $e->getMessage());
+    logAdminMessage('euroalt-admin: add-alternative failed: ' . $e->getMessage());
     jsonError(500, 'internal_error');
 }

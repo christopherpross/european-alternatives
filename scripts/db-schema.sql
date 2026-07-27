@@ -5,7 +5,7 @@
 -- Date:             2026-02-27
 -- Engine:           MySQL 8.0+ (InnoDB)
 -- Charset:          utf8mb4 / utf8mb4_unicode_ci
--- Tables:           17
+-- Tables:           23
 -- Schema for European Alternatives database
 --
 -- This schema creates the full normalized catalog database for the European
@@ -19,8 +19,10 @@
 --   DROP TABLE IF EXISTS landing_group_categories, landing_category_groups,
 --     further_reading_resources, denied_decisions, scoring_metadata,
 --     positive_signals, reservations, us_vendor_aliases, entry_replacements,
---     category_us_vendors, entry_tags, entry_categories, catalog_entries,
---     tags, categories, countries, schema_migrations;
+--     category_us_vendors, entry_tags, matrix_fact_verifications,
+--     matrix_fact_attempts, matrix_facts, entry_categories, catalog_entries,
+--     tags, matrix_criterion_options, matrix_criteria,
+--     matrix_criterion_groups, categories, countries, schema_migrations;
 -- =============================================================================
 
 SET NAMES utf8mb4;
@@ -61,7 +63,76 @@ CREATE TABLE `categories` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------------
--- 4. tags — normalized tag slugs with optional i18n labels
+-- 4. matrix_criterion_groups — category-owned matrix criterion groups
+--    Depends on: categories
+-- ---------------------------------------------------------------------------
+-- Matrix criterion groups are scoped to one category.
+CREATE TABLE `matrix_criterion_groups` (
+  `id`             BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `category_id`    VARCHAR(50)     NOT NULL,
+  `group_key`      VARCHAR(100)    NOT NULL,
+  `label_en`       VARCHAR(200)    NOT NULL,
+  `label_de`       VARCHAR(200)    NOT NULL,
+  `description_en` TEXT            DEFAULT NULL,
+  `description_de` TEXT            DEFAULT NULL,
+  `sort_order`     INT             NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_mcg_category_key` (`category_id`, `group_key`),
+  UNIQUE KEY `uq_mcg_category_order` (`category_id`, `sort_order`),
+  UNIQUE KEY `uq_mcg_category_id` (`category_id`, `id`),
+  CONSTRAINT `fk_mcg_category` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------------
+-- 5. matrix_criteria — category-specific matrix rows and filters
+--    Depends on: categories, matrix_criterion_groups
+-- ---------------------------------------------------------------------------
+-- Matrix criteria define category-specific comparison rows and filters.
+CREATE TABLE `matrix_criteria` (
+  `id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `category_id`   VARCHAR(50)     NOT NULL,
+  `group_id`      BIGINT UNSIGNED NOT NULL,
+  `criterion_key` VARCHAR(100)    NOT NULL,
+  `label_en`      VARCHAR(200)    NOT NULL,
+  `label_de`      VARCHAR(200)    NOT NULL,
+  `help_text_en`  TEXT            DEFAULT NULL,
+  `help_text_de`  TEXT            DEFAULT NULL,
+  `value_type`    ENUM('boolean','enum','multi_enum','number','text','url','date') NOT NULL,
+  `semantics`     ENUM('beneficial','harmful','neutral','tradeoff','informational','risk') NOT NULL DEFAULT 'neutral',
+  `filter_mode`   ENUM('none','optional','must_match','range','multi_select') NOT NULL DEFAULT 'none',
+  `display_mode`  ENUM('default','coverage') NOT NULL DEFAULT 'default',
+  `sort_order`    INT             NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_mc_category_key` (`category_id`, `criterion_key`),
+  UNIQUE KEY `uq_mc_category_order` (`category_id`, `sort_order`),
+  UNIQUE KEY `uq_mc_category_id` (`category_id`, `id`),
+  KEY `ix_mc_group_category` (`category_id`, `group_id`),
+  CONSTRAINT `fk_mc_category` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_mc_group_category` FOREIGN KEY (`category_id`, `group_id`)
+    REFERENCES `matrix_criterion_groups` (`category_id`, `id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------------
+-- 6. matrix_criterion_options — allowed options for enum matrix criteria
+--    Depends on: matrix_criteria
+-- ---------------------------------------------------------------------------
+-- Matrix criterion options are scoped to one enum or multi-enum criterion.
+CREATE TABLE `matrix_criterion_options` (
+  `id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `criterion_id` BIGINT UNSIGNED NOT NULL,
+  `option_key`   VARCHAR(100)    NOT NULL,
+  `label_en`     VARCHAR(200)    NOT NULL,
+  `label_de`     VARCHAR(200)    NOT NULL,
+  `display_tone` ENUM('positive','warning','negative','neutral','tradeoff') DEFAULT NULL,
+  `sort_order`   INT             NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_mco_criterion_key` (`criterion_id`, `option_key`),
+  UNIQUE KEY `uq_mco_criterion_order` (`criterion_id`, `sort_order`),
+  CONSTRAINT `fk_mco_criterion` FOREIGN KEY (`criterion_id`) REFERENCES `matrix_criteria` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------------
+-- 7. tags — normalized tag slugs with optional i18n labels
 -- ---------------------------------------------------------------------------
 CREATE TABLE `tags` (
   `id`       BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -73,7 +144,7 @@ CREATE TABLE `tags` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------------
--- 5. catalog_entries — unified entity table (alternatives, US, denied, etc.)
+-- 8. catalog_entries — unified entity table (alternatives, US, denied, etc.)
 --    Depends on: countries
 -- ---------------------------------------------------------------------------
 CREATE TABLE `catalog_entries` (
@@ -116,7 +187,7 @@ CREATE TABLE `catalog_entries` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------------
--- 6. entry_categories — many-to-many: entries <-> categories
+-- 9. entry_categories — many-to-many: entries <-> categories
 --    Depends on: catalog_entries, categories
 --    Uses a generated column + unique index to enforce at-most-one primary
 --    category per entry.
@@ -134,7 +205,101 @@ CREATE TABLE `entry_categories` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------------
--- 7. entry_tags — many-to-many: entries <-> tags (with display order)
+-- 10. matrix_facts — current matrix fact state per entry and criterion
+--     Depends on: catalog_entries, entry_categories, matrix_criteria
+-- ---------------------------------------------------------------------------
+CREATE TABLE `matrix_facts` (
+  `id`                          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `entry_id`                    BIGINT UNSIGNED NOT NULL,
+  `category_id`                 VARCHAR(50)     NOT NULL,
+  `criterion_id`                BIGINT UNSIGNED NOT NULL,
+  `status`                      ENUM('open','researching','verified','rejected','needs-deeper-research','not-applicable') NOT NULL DEFAULT 'open',
+  `value_bool`                  TINYINT(1)      DEFAULT NULL,
+  `value_number`                DECIMAL(12,4)   DEFAULT NULL,
+  `value_text`                  TEXT            DEFAULT NULL,
+  `value_json`                  JSON            DEFAULT NULL,
+  `public_source_url`           VARCHAR(2048)   DEFAULT NULL,
+  `public_source_title`         VARCHAR(500)    DEFAULT NULL,
+  `public_source_accessed_date` DATE            DEFAULT NULL,
+  `selected_attempt_id`         BIGINT UNSIGNED DEFAULT NULL,
+  `deeper_research_attempt_count`   INT             NOT NULL DEFAULT 0,
+  `deeper_research_next_eligible_at` DATETIME        DEFAULT NULL,
+  `created_at`                  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`                  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_mf_entry_criterion` (`entry_id`, `criterion_id`),
+  KEY `ix_mf_entry_category` (`entry_id`, `category_id`),
+  KEY `ix_mf_category_criterion` (`category_id`, `criterion_id`),
+  KEY `ix_mf_status` (`status`),
+  KEY `ix_mf_selected_attempt_fact` (`selected_attempt_id`, `id`),
+  KEY `ix_mf_deeper_research_next_eligible_at` (`status`, `deeper_research_next_eligible_at`),
+  CONSTRAINT `fk_mf_entry` FOREIGN KEY (`entry_id`) REFERENCES `catalog_entries` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_mf_entry_category` FOREIGN KEY (`entry_id`, `category_id`)
+    REFERENCES `entry_categories` (`entry_id`, `category_id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_mf_criterion_category` FOREIGN KEY (`category_id`, `criterion_id`)
+    REFERENCES `matrix_criteria` (`category_id`, `id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------------
+-- 11. matrix_fact_attempts — research attempts against one matrix fact
+--     Depends on: matrix_facts
+-- ---------------------------------------------------------------------------
+CREATE TABLE `matrix_fact_attempts` (
+  `id`                    BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `fact_id`               BIGINT UNSIGNED NOT NULL,
+  `agent`                 VARCHAR(100)    NOT NULL,
+  `model`                 VARCHAR(100)    DEFAULT NULL,
+  `command`               TEXT            DEFAULT NULL,
+  `proposed_status`       ENUM('open','verified','rejected','needs-deeper-research','not-applicable') DEFAULT NULL,
+  `proposed_value_bool`   TINYINT(1)      DEFAULT NULL,
+  `proposed_value_number` DECIMAL(12,4)   DEFAULT NULL,
+  `proposed_value_text`   TEXT            DEFAULT NULL,
+  `proposed_value_json`   JSON            DEFAULT NULL,
+  `source_url`            VARCHAR(2048)   DEFAULT NULL,
+  `source_title`          VARCHAR(500)    DEFAULT NULL,
+  `accessed_date`         DATE            DEFAULT NULL,
+  `audit_quote`           TEXT            DEFAULT NULL,
+  `raw_response`          LONGTEXT        DEFAULT NULL,
+  `status`                ENUM('proposed','accepted','rejected','needs-verification','needs-deeper-research','error') NOT NULL DEFAULT 'proposed',
+  `created_at`            DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`            DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_mfa_id_fact` (`id`, `fact_id`),
+  KEY `ix_mfa_fact_status` (`fact_id`, `status`),
+  CONSTRAINT `fk_mfa_fact` FOREIGN KEY (`fact_id`) REFERENCES `matrix_facts` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------------
+-- 12. matrix_fact_verifications — independent checks of one research attempt
+--     Depends on: matrix_fact_attempts
+-- ---------------------------------------------------------------------------
+CREATE TABLE `matrix_fact_verifications` (
+  `id`             BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `attempt_id`     BIGINT UNSIGNED NOT NULL,
+  `verifier_index` TINYINT UNSIGNED NOT NULL,
+  `agent`          VARCHAR(100)    NOT NULL,
+  `source_url`     VARCHAR(2048)   DEFAULT NULL,
+  `source_title`   VARCHAR(500)    DEFAULT NULL,
+  `accessed_date`  DATE            DEFAULT NULL,
+  `audit_quote`    TEXT            DEFAULT NULL,
+  `verdict`        ENUM('supports','contradicts','inconclusive','source-inaccessible','source-quality-rejected','not-applicable') NOT NULL,
+  `notes`          TEXT            DEFAULT NULL,
+  `raw_response`   LONGTEXT        DEFAULT NULL,
+  `created_at`     DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`     DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_mfv_attempt_verifier` (`attempt_id`, `verifier_index`),
+  CONSTRAINT `fk_mfv_attempt` FOREIGN KEY (`attempt_id`) REFERENCES `matrix_fact_attempts` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_mfv_verifier_index` CHECK (`verifier_index` BETWEEN 1 AND 3)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE `matrix_facts`
+  ADD CONSTRAINT `fk_mf_selected_attempt`
+  FOREIGN KEY (`selected_attempt_id`, `id`)
+  REFERENCES `matrix_fact_attempts` (`id`, `fact_id`);
+
+-- ---------------------------------------------------------------------------
+-- 13. entry_tags — many-to-many: entries <-> tags (with display order)
 --    Depends on: catalog_entries, tags
 -- ---------------------------------------------------------------------------
 CREATE TABLE `entry_tags` (
@@ -148,7 +313,7 @@ CREATE TABLE `entry_tags` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------------
--- 8. category_us_vendors — "Replaces X, Y, Z" per category
+-- 14. category_us_vendors — "Replaces X, Y, Z" per category
 --    Depends on: categories, catalog_entries
 -- ---------------------------------------------------------------------------
 CREATE TABLE `category_us_vendors` (
@@ -165,7 +330,7 @@ CREATE TABLE `category_us_vendors` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------------
--- 9. entry_replacements — which US vendors an alternative replaces
+-- 15. entry_replacements — which US vendors an alternative replaces
 --    Depends on: catalog_entries
 -- ---------------------------------------------------------------------------
 CREATE TABLE `entry_replacements` (
@@ -181,7 +346,7 @@ CREATE TABLE `entry_replacements` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------------
--- 10. us_vendor_aliases — maps product names / abbreviations to US vendor entries
+-- 16. us_vendor_aliases — maps product names / abbreviations to US vendor entries
 --     Depends on: catalog_entries
 --     Example: alias "Adobe Photoshop" → entry_id for "Adobe" (or vice versa)
 -- ---------------------------------------------------------------------------
@@ -195,7 +360,7 @@ CREATE TABLE `us_vendor_aliases` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------------
--- 11. reservations — trust reservations (penalties) for catalog entries
+-- 17. reservations — trust reservations (penalties) for catalog entries
 --     Depends on: catalog_entries
 -- ---------------------------------------------------------------------------
 CREATE TABLE `reservations` (
@@ -218,7 +383,7 @@ CREATE TABLE `reservations` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------------
--- 11. positive_signals — trust-positive evidence for catalog entries
+-- 18. positive_signals — trust-positive evidence for catalog entries
 --     Depends on: catalog_entries
 -- ---------------------------------------------------------------------------
 CREATE TABLE `positive_signals` (
@@ -238,7 +403,7 @@ CREATE TABLE `positive_signals` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------------
--- 12. scoring_metadata — per-entry scoring configuration overrides
+-- 19. scoring_metadata — per-entry scoring configuration overrides
 --     Depends on: catalog_entries
 -- ---------------------------------------------------------------------------
 CREATE TABLE `scoring_metadata` (
@@ -252,7 +417,7 @@ CREATE TABLE `scoring_metadata` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------------
--- 13. denied_decisions — denial reasoning for rejected alternatives
+-- 20. denied_decisions — denial reasoning for rejected alternatives
 --     Depends on: catalog_entries (status = 'denied')
 -- ---------------------------------------------------------------------------
 CREATE TABLE `denied_decisions` (
@@ -271,7 +436,7 @@ CREATE TABLE `denied_decisions` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------------
--- 14. further_reading_resources — curated external resource links
+-- 21. further_reading_resources — curated external resource links
 --     No FK dependencies
 -- ---------------------------------------------------------------------------
 CREATE TABLE `further_reading_resources` (
@@ -289,7 +454,7 @@ CREATE TABLE `further_reading_resources` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------------
--- 15. landing_category_groups — groups for landing page display
+-- 22. landing_category_groups — groups for landing page display
 --     No FK dependencies
 -- ---------------------------------------------------------------------------
 CREATE TABLE `landing_category_groups` (
@@ -305,7 +470,7 @@ CREATE TABLE `landing_category_groups` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------------
--- 16. landing_group_categories — many-to-many: landing groups <-> categories
+-- 23. landing_group_categories — many-to-many: landing groups <-> categories
 --     Depends on: landing_category_groups, categories
 -- ---------------------------------------------------------------------------
 CREATE TABLE `landing_group_categories` (

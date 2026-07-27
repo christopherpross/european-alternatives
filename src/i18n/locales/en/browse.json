@@ -5,6 +5,20 @@
   "catalogueComingSoonDesc": "We're building a comprehensive directory of European and open-source alternatives. Check back soon or contribute to the project.",
   "noResults": "No Results Found",
   "noResultsDesc": "No alternatives match your current filters. Try adjusting your search or filter criteria.",
+  "compare": {
+    "selectedCount_one": "{{count}} card selected for comparison",
+    "selectedCount_other": "{{count}} cards selected for comparison",
+    "open": "Compare",
+    "clear": "Clear comparison selection"
+  },
+  "overlay": {
+    "close": "Close"
+  },
+  "resultMode": {
+    "label": "Show alternatives as",
+    "browse": "Browse",
+    "matrix": "Matrix"
+  },
   "filters": {
     "searchPlaceholder": "Search alternatives...",
     "searchLabel": "Search alternatives",
@@ -15,6 +29,10 @@
     "sortName": "Name (A-Z)",
     "sortCountry": "Country",
     "sortCategory": "Category",
+    "sortSecurity": "Security score (high to low)",
+    "sortGovernance": "Governance score (high to low)",
+    "sortReliability": "Reliability score (high to low)",
+    "sortContract": "Contract score (high to low)",
     "gridView": "Grid view",
     "listView": "List view",
     "filters": "Filters",
@@ -22,7 +40,97 @@
     "categoryTitle": "Category",
     "countryTitle": "Country",
     "pricingTitle": "Pricing",
-    "openSourceOnly": "Open Source Only"
+    "openSourceOnly": "Open Source Only",
+    "selfHostable": "Self-hostable"
+  },
+  "matrixView": {
+    "title": "{{category}} comparison matrix",
+    "criteriaColumn": "Criterion",
+    "productColumn": "Product",
+    "yes": "Yes",
+    "no": "No",
+    "yesIcon": "Supported",
+    "noIcon": "Not supported",
+    "unverified": "Unverified",
+    "notApplicable": "Not applicable",
+    "source": "Source",
+    "accessedDate": "Accessed {{date}}",
+    "openSourceLabel": "Open source for {{product}} — {{criterion}}",
+    "legend": {
+      "title": "Legend",
+      "positive": "Positive / supported",
+      "warning": "Caution",
+      "negative": "Negative / not supported",
+      "neutral": "Neutral / informational",
+      "tradeoff": "Trade-off",
+      "unverified": "Unverified",
+      "notApplicable": "Not applicable"
+    },
+    "popover": {
+      "title": "Cell details",
+      "openLabel": "Show details for {{product}} — {{criterion}}",
+      "close": "Close",
+      "product": "Product",
+      "criterion": "Criterion",
+      "value": "Value",
+      "source": "Source",
+      "noSource": "No public source available"
+    },
+    "inspector": {
+      "primaryLabel": "Primary product",
+      "compareLabel": "Compare with",
+      "noSecondary": "No comparison"
+    },
+    "toolbar": {
+      "searchPlaceholder": "Search criteria...",
+      "searchLabel": "Search criteria",
+      "clearSearch": "Clear criteria search",
+      "matchCount": "{{matched}} of {{total}} criteria",
+      "densityLabel": "Density",
+      "densityCompact": "Compact",
+      "densityComfortable": "Comfortable",
+      "emptyTitle": "No criteria match",
+      "emptyBody": "No criteria match the current search. Clear the search to see all criteria.",
+      "emptyBodyWithToggles": "No criteria match the active filters. Reset the toggles or clear the search to see more criteria.",
+      "showDifferences": "Show only differences",
+      "hideUnverified": "Hide unverified",
+      "resetToggles": "Reset toggles",
+      "focusOnly": "Focus on pinned",
+      "clearPins": "Clear pins",
+      "pinnedCount": "{{count}} pinned"
+    },
+    "sort": {
+      "nameAsc": "Sort by name ascending",
+      "nameDesc": "Sort by name descending",
+      "trustScoreAsc": "Sort by Trust Score ascending",
+      "trustScoreDesc": "Sort by Trust Score descending"
+    },
+    "columnFilters": {
+      "openLabel": "Filter {{criterion}}",
+      "title": "Filter {{criterion}}",
+      "close": "Close filter",
+      "valuesTitle": "Values",
+      "statusTitle": "Fact status",
+      "verified": "Verified",
+      "unverified": "Unverified",
+      "notApplicable": "Not applicable",
+      "includeUnverified": "Include unverified rows",
+      "clear": "Clear this filter",
+      "clearAll": "Clear matrix filters",
+      "activeLabel": "Matrix filters",
+      "removeLabel": "Remove filter {{label}}",
+      "resultCount": "{{count}} products",
+      "emptyTitle": "No products match",
+      "emptyBody": "No visible products match the active matrix filters. Clear them or choose a broader value.",
+      "noValues": "No verified values yet"
+    },
+    "openProductDetails": "Open {{product}} details",
+    "pinAction": "Pin {{product}}",
+    "unpinAction": "Unpin {{product}}",
+    "pinnedBadge": "Pinned",
+    "focusedEmptyTitle": "No pinned products visible",
+    "focusedEmptyBody": "Your pinned products are filtered out. Exit focus mode to see them again.",
+    "exitFocus": "Exit focus mode"
   },
   "card": {
     "showMore": "Show more",
@@ -45,7 +153,7 @@
     "hideUSVendorDetails": "Hide details",
     "showUSVendorDetailsFor": "Show US company profiles for {{name}}",
     "hideUSVendorDetailsFor": "Hide US company profiles for {{name}}",
-    "trustScorePending": "Trust-Score Pending",
+    "trustScorePending": "Not rated yet",
     "trustScoreLabel": "Trust Score: {{score}}/10",
     "trustScoreBreakdownTitle": "Trust Score Breakdown",
     "trustScoreBreakdownExplanation": "Each dimension starts at 50% and is adjusted by reservation penalties (−) and positive signals (+). The operational score is the sum of all four dimensions.",

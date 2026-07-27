@@ -11,3 +11,6 @@ Require all denied
 <Files "add-alternative.php">
     Require all granted
 </Files>
+<Files "deny-alternative.php">
+    Require all granted
+</Files>

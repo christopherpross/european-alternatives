@@ -124,6 +124,10 @@
       "name": "Musik-Streaming",
       "description": "Musik-Streaming-Plattformen und -Dienste"
     },
+    "game-stores": {
+      "name": "Game-Stores & Launcher",
+      "description": "Game-Stores, Launcher, Bibliotheksmanager und Kompatibilitäts-Runner"
+    },
     "app-stores": {
       "name": "App-Stores",
       "description": "App-Stores und Software-Distributionsplattformen"
@@ -131,6 +135,10 @@
     "smartphones": {
       "name": "Smartphones",
       "description": "Smartphone-Hersteller und Mobilgeräte"
+    },
+    "e-readers": {
+      "name": "E-Reader",
+      "description": "Dedizierte E-Ink-Lesegeräte, E-Book-Geräte und Papier-Tablets"
     },
     "note-taking": {
       "name": "Notizen",
@@ -219,6 +227,7 @@
     "is": "Island",
     "us": "Vereinigte Staaten",
     "ca": "Kanada",
+    "cn": "China",
     "eu": "Open Source (Nicht-EU-HQ)",
     "oss": "Open Source"
   },

@@ -122,10 +122,13 @@ If you're contributing a logo file via PR, make sure:
 | `password-manager`   | Password Manager      | LastPass, 1Password, Dashlane                        |
 | `2fa-authenticator`  | 2FA Authenticators    | Google Authenticator, Microsoft Authenticator, Authy |
 | `ai-ml`              | AI & Machine Learning | OpenAI, Google AI, AWS AI                            |
+| `game-stores`        | Game Stores & Launchers | Steam, Epic Games Store, EA app                    |
 | `hosting`            | Cloud & Hosting       | AWS, Google Cloud, Azure, Cloudflare                 |
 | `databases`          | Databases             | Oracle Database, SQL Server, Amazon RDS, Cloud SQL   |
 | `payments`           | Payments              | Stripe, PayPal, Square                               |
 | `ecommerce`          | E-Commerce            | Shopify, Amazon, eBay                                |
+| `game-stores`        | Game Stores & Launchers | Steam, Epic Games Store, EA app                    |
+| `e-readers`          | E-Readers             | Amazon Kindle, Rakuten Kobo, BOOX                    |
 | `other`              | Other                 | —                                                    |
 
 Don't see a fitting category? You can [propose a new one](#adding-a-new-category).
@@ -138,7 +141,7 @@ All country codes below are valid in the type system. Note that the browse page'
 
 **Other European:** CH, NO, GB, IS
 
-**Non-European (Tier 2):** Currently US, CA in the type system — but the policy allows any jurisdiction not listed in Tier 1, provided the entry is **fully open-source** (client and server code under an OSI-approved license; see [DECISION_MATRIX.md](DECISION_MATRIX.md)). To add an alternative from a new Tier 2 country, extend `CountryCode` in `src/types/index.ts` first.
+**Non-European (Tier 2):** Currently AU, AE, CA, US, IN, JP, SA, MX, CN, VG in the type system — but the policy allows any jurisdiction not listed in Tier 1, provided the entry is **fully open-source** (client and server code under an OSI-approved license; see [DECISION_MATRIX.md](DECISION_MATRIX.md)). To add an alternative from a new Tier 2 country, extend `CountryCode` in `src/types/index.ts` first.
 
 **Multi-country:** `eu` (for pan-European services)
 
@@ -245,7 +248,9 @@ For bug fixes, features, and improvements to the application itself.
 Understanding the codebase will help you contribute effectively:
 
 - **URL is the source of truth** for category and search filters. These are derived from `useSearchParams()`, not local React state.
-- **Local state** is used for non-URL filters (country, pricing, open source toggle, sort order, view mode).
+- **Local state** is used for non-URL filters (country, pricing, open source toggle, self-hostable toggle, category-specific fit filters), sort order, and view mode.
+- **Category-specific fit filters** appear only when exactly one category with comparison data is selected. They compose with global filters, keep `Unverified` results visible by default, and reset or become inactive when users leave that single-category context.
+- **Category matrix facts** are database-backed product-fit facts, not Trust Score inputs. Maintainers operate the one-fact matrix research workflow documented in [api/README.md](api/README.md); contributors do not need to supply matrix facts unless a maintainer asks for specific evidence.
 - **`latestParamsRef`** prevents stale reads when multiple URL updates happen in the same tick.
 - **`setSearchParamsRef`** avoids dependency array issues with `useCallback`.
 - **Logo fallback** — all logo `<img>` elements have an `onError` handler that switches to a country flag icon.
